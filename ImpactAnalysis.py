@@ -57,10 +57,10 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
         arcpy.AddMessage(("{0} features found in {1}".format(match_count, analysis_layer)))
 
         arcpy.CopyFeatures_management(out_layer_name, out_layer)
-        arcpy.AddField_management(out_layer, "RESULTTYPE", "TEXT", "", "", 10)
+        arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
         exp = "'{}'".format(layer_type)
 
-        arcpy.CalculateField_management(out_layer, "RESULTTYPE", exp, "PYTHON_9.3", None)
+        arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
 
     return out_layer
 
@@ -84,9 +84,9 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
     else:
         arcpy.AddMessage(("{0} features found in {1}. Adding more information.".format(match_count, analysis_layer)))
 
-        arcpy.AddField_management(out_layer, "RESULTTYPE", "TEXT", "", "", 10)
+        arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
         exp = "'{}'".format(layer_type)
-        arcpy.CalculateField_management(out_layer, "RESULTTYPE", exp, "PYTHON_9.3", None)
+        arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
 
         desc = arcpy.Describe(out_layer)
         shape_type = desc.shapeType
@@ -146,7 +146,7 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
         else:
             arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
 
-        arcpy.AddField_management(out_layer_name, "RESULTTYPE", "TEXT", "", "", 100)
+        arcpy.AddField_management(out_layer_name, "ANALYSISLOC", "TEXT", "", "", 100, "Location")
 
         exp = "getValue(!NEAR_DIST!)"
         codeblock = """def getValue(dist):
@@ -155,7 +155,7 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
                 return 'Intersecting with AOI boundary'
             else:
                 return 'Within AOI'"""
-        arcpy.CalculateField_management(out_layer_name, "RESULTTYPE", exp, "PYTHON_9.3", codeblock)
+        arcpy.CalculateField_management(out_layer_name, "ANALYSISLOC", exp, "PYTHON_9.3", codeblock)
 
         exp = "getValue(!NEAR_DIST!, !NEAR_ANGLE!)"
         codeblock = """def getValue(dist, angle):
@@ -198,7 +198,7 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
         else:
             arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
 
-        arcpy.AddField_management(out_layer_name, "RESULTTYPE", "TEXT", "", "", 100)
+        arcpy.AddField_management(out_layer_name, "ANALYSISLOC", "TEXT", "", "", 100, "Location")
 
         exp = "getValue(!NEAR_DIST!)"
         codeblock = """def getValue(dist):
@@ -206,7 +206,7 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
                 return 'Outside AOI, within buffer'
             else:
                 return 'Unexpected result'"""
-        arcpy.CalculateField_management(out_layer_name, "RESULTTYPE", exp, "PYTHON_9.3", codeblock)
+        arcpy.CalculateField_management(out_layer_name, "ANALYSISLOC", exp, "PYTHON_9.3", codeblock)
 
         return out_layer_name
 
@@ -248,7 +248,7 @@ def format_outputs(output_layer, out_fields):
             fm.addInputField(output_layer, field.name)
             field_mapper.addFieldMap(fm)
 
-        elif field.name in ['RESULTTYPE', 'PERCENTTOTAL', 'ACRES', 'DISTANCE', 'COUNT', 'NEAR_DIST', 'NEAR_ANGLE']:
+        elif field.name in ['ANALYSISTYPE', 'ANALYSISLOC' 'PERCENTTOTAL', 'ACRES', 'DISTANCE', 'COUNT', 'NEAR_DIST', 'NEAR_ANGLE']:
             # Keep Me
             fm = arcpy.FieldMap()
             fm.addInputField(output_layer, field.name)
@@ -283,11 +283,9 @@ def create_empty_output(out_table):
     out_name = out_table.split("\\")[-1]
 
     arcpy.CreateTable_management(out_path, out_name, None, None)
-    arcpy.AddField_management(out_table, "RESULTTYPE", "TEXT", "", "", 100)
 
     rows = arcpy.InsertCursor(out_table)
     row = rows.newRow()
-    row.setValue("RESULTTYPE", "No features intersect the area of interest or buffer.")
     rows.insertRow(row)
 
     del row
