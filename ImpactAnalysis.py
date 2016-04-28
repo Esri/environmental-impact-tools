@@ -1,5 +1,20 @@
-# python
-# author: jess neuner
+"""
+-------------------------------------------------------------------------------
+ | Copyright 2016 Esri
+ |
+ | Licensed under the Apache License, Version 2.0 (the "License");
+ | you may not use this file except in compliance with the License.
+ | You may obtain a copy of the License at
+ |
+ |    http://www.apache.org/licenses/LICENSE-2.0
+ |
+ | Unless required by applicable law or agreed to in writing, software
+ | distributed under the License is distributed on an "AS IS" BASIS,
+ | WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ | See the License for the specific language governing permissions and
+ | limitations under the License.
+ ------------------------------------------------------------------------------
+ """
 
 import arcpy
 import sys
@@ -31,13 +46,19 @@ arcpy.env.overwriteOutput = True
 output_workspace = arcpy.env.scratchWorkspace
 arcpy.env.workspace = output_workspace
 
+arcpy.AddMessage("Analysis Type: {}".format(analysis_type))
+arcpy.AddMessage("Input analysis layer: {}".format(input_analysis_layer))
+arcpy.AddMessage("Output fields: {}".format(output_fields))
+arcpy.AddMessage("Input aoi: {}".format(input_aoi))
+arcpy.AddMessage("Input buffer: {}".format(input_buffer_layer))
+arcpy.AddMessage("Output table: {}".format(output_table))
 
 # --------------------------------------
 # Function to validate script inputs
 def validate_inputs():
 
     result = True
-    reason = "Pass"
+    reason = ""
 
     if analysis_type in ["Feature Comparison", "Basic Proximity", "Distance"]:
         result = True
@@ -51,10 +72,12 @@ def validate_inputs():
         for field in fields:
             field_names.append(field.name.upper())
 
-        for item in output_fields:
+        check_fields = output_fields.split(';')
+        for item in check_fields:
             if item.upper() in field_names:
                 continue
             else:
+                result = False
                 reason += "\n No field {} found in {}".format(item, input_analysis_layer)
     else:
         result = False
@@ -66,7 +89,7 @@ def validate_inputs():
         result = False
         reason += '\n {} does not exist'.format(input_aoi)
 
-    if input_buffer_layer != "":
+    if input_buffer_layer != "#":
         if arcpy.Exists(input_buffer_layer):
             a = 1
         else:
@@ -88,7 +111,7 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
         match_count = int(arcpy.GetCount_management(out_layer_name)[0])
 
         if match_count == 0:
-            arcpy.AddMessage(("no features found in {0}".format(analysis_layer)))
+            arcpy.AddMessage(("No features found in {0}".format(analysis_layer)))
             return "empty"
 
         else:
@@ -110,8 +133,6 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
 # Feature Comparison Analysis Type
 def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, clip_area):
     try:
-        arcpy.AddMessage("Analyzing layer: {}".format(analysis_layer))
-
         xy_tolerance = ""
         out_layer = output_workspace + "\\" + out_layer_name
 
@@ -134,29 +155,26 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
             shape_type = desc.shapeType
 
             if shape_type == "Polygon":
-                arcpy.AddMessage("   Adding information for polygons")
                 arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "", "Total Area (acres)")
                 exp = 'round(!shape.area@acres!,2)'
                 arcpy.CalculateField_management(out_layer, "ANALYSISAREA", exp, "PYTHON_9.3", None)
 
                 arcpy.AddField_management(out_layer, "ANALYSISPERCENT", "DOUBLE", "", "", "", "Percent of Area")
-                exp = '(!ANALYSISAREA! / ' + str(clip_area) + ')*100'
+                exp = 'round((!ANALYSISAREA! / ' + str(clip_area) + ')*100, 2)'
                 arcpy.CalculateField_management(out_layer, "ANALYSISPERCENT", exp, "PYTHON_9.3", None)
 
             elif shape_type == "Polyline":
-                arcpy.AddMessage("Adding information for lines")
                 arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "", "Total Length")
                 exp = 'round(!shape.length@miles!,2)'
                 arcpy.CalculateField_management(out_layer, "ANALYSISLEN", exp, "PYTHON_9.3", None)
 
             elif shape_type == "Point":
-                arcpy.AddMessage("   Adding information for points")
                 arcpy.AddField_management(out_layer, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
                 exp = '1'
                 arcpy.CalculateField_management(out_layer, "ANALYSISCOUNT", exp, "PYTHON_9.3", None)
 
             else:
-                arcpy.AddMessage("type not supported")
+                arcpy.AddMessage("Shape type not supported: {}".format(shape_type))
 
             return out_layer
     except Exception as error:
@@ -174,11 +192,11 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
             match_count = int(arcpy.GetCount_management("near_layer")[0])
 
             if match_count == 0:
-                arcpy.AddMessage(("no features found in {0}".format(aoi_layer)))
+                arcpy.AddMessage(("No features found in {0}".format(aoi_layer)))
                 return "empty"
 
             else:
-                arcpy.AddMessage(("{0} features found in {1}".format(match_count, aoi_layer)))
+                arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, aoi_layer)))
                 arcpy.CopyFeatures_management("near_layer", out_layer_name)
 
                 desc = arcpy.Describe(aoi_layer)
@@ -229,11 +247,11 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
         match_count = int(arcpy.GetCount_management("near_layer")[0])
 
         if match_count == 0:
-            arcpy.AddMessage(("no features found in {0}".format(buffer_layer)))
+            arcpy.AddMessage(("No features found in {0}".format(buffer_layer)))
             return "empty"
 
         else:
-            arcpy.AddMessage(("{0} features found in {1}".format(match_count, buffer_layer)))
+            arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, buffer_layer)))
             arcpy.CopyFeatures_management("near_layer", out_layer_name)
 
             desc = arcpy.Describe(aoi_layer)
@@ -271,8 +289,6 @@ def get_area(input_fc, units):
         for geometry in geometries:
             area += geometry.getArea('GEODESIC', units)
 
-        arcpy.AddMessage(("Total for {0}:\t {2}: {1}".format(input_fc, area, units)))
-
         return area
     except Exception as error:
         arcpy.AddError("Get Area Error: {}".format(error))
@@ -283,7 +299,7 @@ def get_area(input_fc, units):
 def format_outputs(output_layer, out_fields):
 
     try:
-        arcpy.AddMessage("Only output fields requested... ")
+
         field_mapper = arcpy.FieldMappings()
 
         fields = arcpy.ListFields(output_layer)
@@ -301,7 +317,7 @@ def format_outputs(output_layer, out_fields):
                 fm.addInputField(output_layer, field.name)
                 field_mapper.addFieldMap(fm)
 
-            elif (field.type.upper() in ["OID"]):
+            elif field.type.upper() in ["OID"]:
                 # Keep Me
                 fm = arcpy.FieldMap()
                 fm.addInputField(output_layer, field.name)
@@ -327,7 +343,6 @@ def format_outputs(output_layer, out_fields):
 # Create the output table with information about there being no results
 def create_empty_output(out_table):
     try:
-        arcpy.AddMessage("Creating empty output table.")
 
         out_path = os.path.dirname(os.path.abspath(out_table))
         out_name = out_table.split("\\")[-1]
@@ -348,7 +363,7 @@ def create_empty_output(out_table):
 # --------------------------------------
 # Main
 try:
-    arcpy.AddMessage("{} Analysis started".format(analysis_type))
+    arcpy.AddMessage("Begin Analysis: {}".format(analysis_type))
 
     valid_inputs = validate_inputs()
     if not valid_inputs[0]:
@@ -361,8 +376,8 @@ try:
         shape = layer_properties.shapeType
         if shape in ["Point", "Polyline"]:
             # check if a buffer shape was provided
-            if input_buffer_layer == "":
-                arcpy.AddWarning("For point and polyline areas of interest, a buffer is also required for Feature Comparison analyses")
+            if input_buffer_layer == "#":
+                arcpy.AddWarning("For point and polyline areas of interest, a buffer layer required for Feature Comparison analyses")
             else:
                 aoi_out = "empty"
                 buffer_area = get_area(input_buffer_layer, 'ACRES')
@@ -378,24 +393,31 @@ try:
 
     elif analysis_type == "Basic Proximity":
         aoi_out = basic_proximity(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI')
-        buffer_out = basic_proximity(input_analysis_layer, input_buffer_layer, interim_output_buffer, 'Buffer')
-
+        if input_buffer_layer != "#":
+            buffer_out = basic_proximity(input_analysis_layer, input_buffer_layer, interim_output_buffer, 'Buffer')
+        else:
+            arcpy.AddMessage("No buffer layer provided.")
+            buffer_out = "empty"
     else:
         aoi_out = distance_analysis_aoi(input_analysis_layer, input_aoi, interim_output_aoi)
-        buffer_out = distance_analysis_buffer(input_analysis_layer, input_aoi, input_buffer_layer, interim_output_buffer)
+        if input_buffer_layer != "#":
+            buffer_out = distance_analysis_buffer(input_analysis_layer, input_aoi, input_buffer_layer, interim_output_buffer)
+        else:
+            arcpy.AddMessage("No buffer layer provided.")
+            buffer_out = "empty"
 
-    arcpy.AddMessage("Consolidate results")
+    arcpy.AddMessage("Creating output table.")
     if (aoi_out == "empty") & (buffer_out == "empty"):
-        arcpy.AddMessage("create empty output")
+        arcpy.AddMessage("No results found in the Area of Interest or Buffer locations.")
         create_empty_output(output_table)
 
     elif aoi_out == "empty":
-        arcpy.AddMessage("Format Report Outputs:")
+        arcpy.AddMessage("No results found in the Area of Interest locations.")
         format_outputs(buffer_out, output_fields)
         arcpy.Delete_management(interim_output_buffer)
 
     elif buffer_out == "empty":
-        arcpy.AddMessage("Format Report Outputs:")
+        arcpy.AddMessage("No results found in the Buffer location or no buffer provided.")
         format_outputs(aoi_out, output_fields)
         arcpy.Delete_management(interim_output_aoi)
 
@@ -404,14 +426,12 @@ try:
         merged_output = output_workspace + "\\" + interim_output_merged
         arcpy.Merge_management([aoi_out, buffer_out], merged_output)
 
-        arcpy.AddMessage("Format Report Outputs:")
+        arcpy.AddMessage("Results found for both the Area of Interest and Buffer locations.")
         format_outputs(merged_output, output_fields)
 
-        arcpy.AddMessage("Clean Up")
+        arcpy.AddMessage("Cleaning up interim results.")
         arcpy.Delete_management(interim_output_aoi)
         arcpy.Delete_management(interim_output_buffer)
-
-    arcpy.AddMessage("{} Analysis completed".format(analysis_type))
 
 except Exception as err:
     arcpy.AddError("Impact Analysis Error: {}".format(err))
