@@ -18,7 +18,10 @@ import os, sys, json, time, textwrap
 #get legend to come to life when we set the map
 
 SPLIT_FIELD = 'RESULTTYPE'
-SPLIT_VALS = ['AOI', 'BUFFER']
+SPLIT_VAL_BUFFER = 'BUFFER'
+SPLIT_VAL_AOI = 'AOI'
+
+BUFFER_TITLE = ' (within buffer)'
 
 MARGIN = .025
 
@@ -49,6 +52,9 @@ class Table:
         self.is_overflow = False
         self.full_overflow = False
         self.remaining_height = None
+        
+        self.buffer_rows = None
+        self.has_buffer_rows = False
 
     def calc_widths(self):
         self.auto_adjust = []
@@ -214,12 +220,35 @@ class Table:
         #Map only elements
         if layout_type == 'map':
             self.report_title = elements['ReportTitle']
+    
+    def check_result_type(self):
+        if SPLIT_FIELD in self.fields:
+            split_field_idx = self.fields.index(SPLIT_FIELD)
+            buffer_rows = []
+            aoi_rows = []
+            for r in self.rows:
+                v = r[split_field_idx]
+                if v == SPLIT_VAL_BUFFER:
+                    r.pop(split_field_idx)
+                    buffer_rows.append(r)
+                else:
+                    #TODO do we want to default to this or handle differently
+                    r.pop(split_field_idx)
+                    aoi_rows.append(r)
+            if len(buffer_rows) > 0:
+                self.has_buffer_rows = True
+                self.buffer_rows = buffer_rows
+            self.rows = aoi_rows
+            self.fields.remove(SPLIT_FIELD)
 
     def init_table(self, elements, remaining_height, layout_type):
         #locate placeholder elements
         self.init_elements(elements, layout_type)
 
         self.remaining_height = remaining_height
+
+        self.check_result_type()
+
         #Calculate the column/row widths and the row/table heights
         if len(self.field_widths) == 0:
             self.calc_widths()
@@ -396,6 +425,12 @@ class Report:
                 overflow_table.row_width = table.row_width
                 overflow_table.max_vals = table.max_vals
                 self.tables.insert(x, overflow_table)
+            if table.has_buffer_rows:
+                if overflow:
+                    x += 1
+                buffer_rows_table = Table(table.title + BUFFER_TITLE, table.buffer_rows, table.fields)
+                self.tables.insert(x, buffer_rows_table)
+
             if table.row_count > 0:
                 table_header_background = table.table_header_background
                 if self.base_y == None:
@@ -685,180 +720,25 @@ def test():
     out_folder = r"C:\temp"  
 
     table_title = "Eagle Nesting Locations within Buffer"
-    test_rows = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg fdsgfd sdsfg dsfg dsfg dsfgdsfg  dfgdfgdfsgdfgs", "256.3553791"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"]]
-    test_rows2 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg fdsgfd sdsfg dsfg dsfg dsfgdsfg  dfgdfgdfsgdfgs", "256.3553791"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"]]
-    test_rows3 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg fdsgfd sdsfg dsfg dsfg dsfgdsfg  dfgdfgdfsgdfgs", "256.3553791"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"]]
-    test_rows4 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg fdsgfd sdsfg dsfg dsfg dsfgdsfg  dfgdfgdfsgdfgs", "256.3553791"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"]]
-    test_rows5 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg fdsgfd sdsfg dsfg dsfg dsfgdsfg  dfgdfgdfsgdfgs", "256.3553791"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"],
-                 ["HL018", "Hillsborough", "878.41094210"]]
-    test_rows6 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg fdsgfd sdsfg dsfg dsfg dsfgdsfg  dfgdfgdfsgdfgs", "256.3553791"],
-                 ["HL018", "Hillsborough", "878.4109422"],
-                 ["HL018", "Hillsborough", "878.4109423"],
-                 ["HL018", "Hillsborough", "878.4109424"],
-                 ["HL018", "Hillsborough", "878.4109425"],
-                 ["HL018", "Hillsborough", "878.4109426"],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
-                 ["HL018", "Hillsborough aaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
-                 ["HL018", "Hillsborough", "878.4109429"]]
-    test_fields = ["NestID", "C", "D"]
+    test_rows2 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg sgdfgs", "256.3553791", 'BUFFER'],
+                 ["HL018", "Hillsborough", "878.4109422", 'AOI'],
+                 ["HL018", "Hillsborough", "878.4109423", 'AOI'],
+                 ["HL018", "Hillsborough", "878.4109424", 'AOI'],
+                 ["HL018", "Hillsborough", "878.4109425", 'AOI'],
+                 ["HL018", "Hillsborough", "878.4109426", 'AOI'],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427", 'AOI'],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaddsdsd", "878.4109428", 'AOI'],
+                 ["HL018", "Hillsborough", "878.4109429", 'AOI']]
+    test_fields = ["NestID", "C", "D", 'RESULTTYPE']
+
     table_title2 = "Eagle Nesting Locations within Buffer2"
-    table_title3 = "Eagle Nesting Locations within Buffer3"
-    table_title4 = "Eagle Nesting Locations within Buffer4"
-    table_title5 = "Eagle Nesting Locations within Buffer5"
-    table_title6 = "Eagle Nesting Locations within Buffer6"
+
     #create the ReportData and add the table
     
     report = Report(report_title, sub_title, logo, map, "Meter", "report_type", map_report_template, overflow_report_template)
-    report.add_table(table_title, test_rows, test_fields)
+    #report.add_table(table_title, test_rows, test_fields)
     report.add_table(table_title2, test_rows2, test_fields)
-    report.add_table(table_title3, test_rows3, test_fields)
-    report.add_table(table_title4, test_rows4, test_fields)
-    report.add_table(table_title5, test_rows5, test_fields)
-    report.add_table(table_title6, test_rows6, test_fields)
+
     pdf = report.generate_report(out_folder)
     os.startfile(pdf)
 
