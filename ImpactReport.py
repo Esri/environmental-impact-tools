@@ -4,6 +4,7 @@ import os, sys, json, time, textwrap
 #avoid showing urls and or url fields...hold off on this for now...
 
 #special handling for RESULTTYPE 
+#AOI vs BUFFER
 
 #issue with table that overflows to more than 2 pages...empty row at t he bottom
 
@@ -12,7 +13,12 @@ import os, sys, json, time, textwrap
 #should look at setting the line symbol cap to something other than round 
 # to see if we can avoid the occasional dangle I am seeing
 
+#TOTAL calc
+
 #get legend to come to life when we set the map
+
+SPLIT_FIELD = 'RESULTTYPE'
+SPLIT_VALS = ['AOI', 'BUFFER']
 
 MARGIN = .025
 
@@ -158,7 +164,8 @@ class Table:
 
         if self.remaining_height == None:
             self.remaining_height = self.content_display.elementHeight
-        self.remaining_height -= (self.table_header_background.elementHeight + MARGIN)
+        if not self.is_overflow:
+            self.remaining_height -= (self.table_header_background.elementHeight + MARGIN)
         if table_height > self.remaining_height:
             num_rows = 0
             if self.remaining_height > 0:
@@ -180,14 +187,15 @@ class Table:
                 self.rows = []
                 self.row_count = len(self.rows)
             else:
-                self.overflow_rows = self.rows[num_rows - 1:]
-                self.rows = self.rows[:num_rows - 1]
+                if self.is_overflow:
+                    self.overflow_rows = self.rows[num_rows:]
+                    self.rows = self.rows[:num_rows]
+                else:
+                    self.overflow_rows = self.rows[num_rows - 1:]
+                    self.rows = self.rows[:num_rows - 1]
                 self.row_count = len(self.rows)
                 self.remaining_height -= self.table_height
-            if not self.is_overflow:
                 self.row_heights = self.row_heights[:num_rows]
-            else:
-                self.row_heights = self.row_heights[:num_rows - 1]
             return True
         else:
             self.table_height = table_height
@@ -685,6 +693,110 @@ def test():
                  ["HL018", "Hillsborough", "878.4109426"],
                  ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
                  ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
+                 ["HL018", "Hillsborough", "878.4109429"],
+                 ["HL018", "Hillsborough", "878.4109422"],
+                 ["HL018", "Hillsborough", "878.4109423"],
+                 ["HL018", "Hillsborough", "878.4109424"],
+                 ["HL018", "Hillsborough", "878.4109425"],
+                 ["HL018", "Hillsborough", "878.4109426"],
+                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427"],
+                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaaaaaaaaaaadsffffffffff dsffsddddddddddddd aaaaaaaaaaaaaaaaaaaaaaaa aaaadddddddddddddddddddddddddddddaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaa    saddddddddddddddd asd asd asddddddddddddddddddddddddddddddddddddddddddddddddd asdddddddddddddddddddddddddddddddddddd asdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd asd", "878.4109428"],
                  ["HL018", "Hillsborough", "878.4109429"]]
     test_rows2 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg fdsgfd sdsfg dsfg dsfg dsfgdsfg  dfgdfgdfsgdfgs", "256.3553791"],
                  ["HL018", "Hillsborough", "878.4109422"],
@@ -754,7 +866,7 @@ def test2():
     report_title = "sd"             #required parameter for report title
     sub_title = "asd"                #optional parameter for sub-title
     logo = r"C:\Solutions\EnvironmentalImpact\matplotlibTests\EnvImpact\EnvImpact\Eagle Nesting Locations within Buffer.png"                     #optional report logo image
-    tables = r"C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_wateraccess_ptAOI" #required multivalue parameter for input tables
+    tables = r"C:\Solutions\Cameo\data\SampleCAMEO_data.gdb\Facilities" #required multivalue parameter for input tables
     map = None                           #required parameter for the map 
 
     scale_unit = None               #required scale unit with default set
