@@ -24,19 +24,22 @@ import os
 # 1. Analysis Type: Choose from: Basic Proximity, Feature Comparison, Distance
 # 2. Analysis Layer: Feature class to be analyzed
 # 3. Output fields: from the selected input Analysis layer, which fields should be included in the output result
-# 4. Area of Interest: Project location. Feature Class. Point, line or polygon.
-# 5. Buffer shape (optional): pre-analyzed buffer for project area.
-# 6. Output table: the GDB path and name of the final results table
-# 7. Scratch workspace: folder to write interim results to
+# 4. Group like records: (optional) merge records in the results so that only
+#                         unique combinations of attributes appear in the output
+# 5. Area of Interest: Project location. Feature Class. Point, line or polygon.
+# 6. Buffer shape (optional): pre-analyzed buffer for project area.
+# 7. Output table: the GDB path and name of the final results table
+# 8. Scratch workspace: folder to write interim results to
 
 args = sys.argv
 
 analysis_type = args[1]
 input_analysis_layer = args[2]
 output_fields = args[3]
-input_aoi = args[4]
-input_buffer_layer = args[5]
-output_table = args[6]
+group_output_records = args[4]
+input_aoi = args[5]
+input_buffer_layer = args[6]
+output_table = args[7]
 
 interim_output_aoi = "interim_result_aoi"
 interim_output_buffer = "interim_result_buffer"
@@ -156,16 +159,16 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 
             if shape_type == "Polygon":
                 arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "", "Total Area (acres)")
-                exp = 'round(!shape.area@acres!,2)'
+                exp = '!shape.area@acres!'
                 arcpy.CalculateField_management(out_layer, "ANALYSISAREA", exp, "PYTHON_9.3", None)
 
                 arcpy.AddField_management(out_layer, "ANALYSISPERCENT", "DOUBLE", "", "", "", "Percent of Area")
-                exp = 'round((!ANALYSISAREA! / ' + str(clip_area) + ')*100, 2)'
+                exp = '(!ANALYSISAREA! / ' + str(clip_area) + ')*100'
                 arcpy.CalculateField_management(out_layer, "ANALYSISPERCENT", exp, "PYTHON_9.3", None)
 
             elif shape_type == "Polyline":
-                arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "", "Total Length")
-                exp = 'round(!shape.length@miles!,2)'
+                arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "", "Total Length (miles)")
+                exp = '!shape.length@miles!'
                 arcpy.CalculateField_management(out_layer, "ANALYSISLEN", exp, "PYTHON_9.3", None)
 
             elif shape_type == "Point":
@@ -303,6 +306,8 @@ def format_outputs(output_layer, out_fields):
         field_mapper = arcpy.FieldMappings()
 
         fields = arcpy.ListFields(output_layer)
+        compare_fields = []
+        stat_fields = ""
         for field in fields:
 
             if field.name in out_fields:
@@ -310,12 +315,24 @@ def format_outputs(output_layer, out_fields):
                 fm = arcpy.FieldMap()
                 fm.addInputField(output_layer, field.name)
                 field_mapper.addFieldMap(fm)
+                compare_fields.append(field.name)
 
-            elif field.name in ['ANALYSISTYPE', 'ANALYSISLOC', 'ANALYSISPERCENT', 'ANALYSISAREA', 'ANALYSISLEN', 'ANALYSISCOUNT', 'NEAR_DIST', 'NEAR_ANGLE']:
-                # Keep Me
+            elif field.name in ['ANALYSISPERCENT', 'ANALYSISAREA', 'ANALYSISLEN', 'ANALYSISCOUNT']:
+                # Keep Me -- these are statistics fields
                 fm = arcpy.FieldMap()
                 fm.addInputField(output_layer, field.name)
                 field_mapper.addFieldMap(fm)
+                if stat_fields == "":
+                    stat_fields = field.name + " SUM"
+                else:
+                    stat_fields = stat_fields + ";" + field.name + " SUM"
+
+            elif field.name in ['ANALYSISTYPE', 'ANALYSISLOC', 'NEAR_DIST', 'NEAR_ANGLE']:
+                # Keep Me -- these are informational/descriptive fields
+                fm = arcpy.FieldMap()
+                fm.addInputField(output_layer, field.name)
+                field_mapper.addFieldMap(fm)
+                compare_fields.append(field.name)
 
             elif field.type.upper() in ["OID"]:
                 # Keep Me
@@ -331,8 +348,27 @@ def format_outputs(output_layer, out_fields):
         out_path = os.path.dirname(os.path.abspath(output_table))
         out_name = output_table.split("\\")[-1]
 
-        # arcpy.AddMessage("path: {}    ....   name: {}".format(out_path, out_name))
-        arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
+        # Clean up the results by deleting or merging identical records
+        if analysis_type == "Basic Proximity":
+            # Nothing special, just remove duplicates
+            arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
+            arcpy.DeleteIdentical_management(output_table, compare_fields)
+        elif analysis_type == "Distance":
+            # Don't remove duplicates, if there are 5 eagle nests, i want to know there
+            #                          are 5 and their unique distances from the project
+            arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
+        else:
+            # Feature Comparison -- summarize the output layer based on the 'keep fields'
+            # Possible Stat Fields .. 'ANALYSISPERCENT', 'ANALYSISAREA', 'ANALYSISLEN', 'ANALYSISCOUNT'
+            arcpy.Statistics_analysis(output_layer, output_table, stat_fields, compare_fields)
+            arcpy.DeleteField_management(output_table, ["FREQUENCY"])
+            if "ANALYSISPERCENT" in stat_fields:
+                arcpy.AlterField_management(output_table, "SUM_ANALYSISPERCENT", "ANALYSISPERCENT", "Percent jjof Area")
+                arcpy.AlterField_management(output_table, "SUM_ANALYSISAREA", "ANALYSISAREA", "Totalhhh Area (acres)")
+            elif "ANALYSISLEN" in stat_fields:
+                arcpy.AlterField_management(output_table, "SUM_ANALYSISLEN", "ANALYSISLEN", "Total Length (miles)")
+            else:
+                arcpy.AlterField_management(output_table, "SUM_ANALYSISCOUNT", "ANALYSISCOUNT", "Count of Features")
 
         return True
     except Exception as error:
