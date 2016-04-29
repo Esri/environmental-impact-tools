@@ -24,22 +24,25 @@ import os
 # 1. Analysis Type: Choose from: Basic Proximity, Feature Comparison, Distance
 # 2. Analysis Layer: Feature class to be analyzed
 # 3. Output fields: from the selected input Analysis layer, which fields should be included in the output result
-# 4. Group like records: (optional) merge records in the results so that only
+# 4. Group like records:  merge records in the results so that only
 #                         unique combinations of attributes appear in the output
 # 5. Area of Interest: Project location. Feature Class. Point, line or polygon.
 # 6. Buffer shape (optional): pre-analyzed buffer for project area.
-# 7. Output table: the GDB path and name of the final results table
-# 8. Scratch workspace: folder to write interim results to
+# 7. Reporting Units: based on the analysis layer shape type
+# 8. Output table: the GDB path and name of the final results table
+# Interim results will be written to the Scratch workspace
 
 args = sys.argv
 
 analysis_type = args[1]
 input_analysis_layer = args[2]
 output_fields = args[3]
-group_output_records = args[4]
+#group_output_records = args[4]
+group_output_records = True  # This should just always happen for the released script
 input_aoi = args[5]
 input_buffer_layer = args[6]
-output_table = args[7]
+reporting_units = args[7]
+output_table = args[8]
 
 interim_output_aoi = "interim_result_aoi"
 interim_output_buffer = "interim_result_buffer"
@@ -52,9 +55,18 @@ arcpy.env.workspace = output_workspace
 arcpy.AddMessage("Analysis Type: {}".format(analysis_type))
 arcpy.AddMessage("Input analysis layer: {}".format(input_analysis_layer))
 arcpy.AddMessage("Output fields: {}".format(output_fields))
-arcpy.AddMessage("Input aoi: {}".format(input_aoi))
+arcpy.AddMessage("Group like records: {}".format(group_output_records))
+arcpy.AddMessage("Input AOI: {}".format(input_aoi))
 arcpy.AddMessage("Input buffer: {}".format(input_buffer_layer))
+arcpy.AddMessage("Reporting units: {}".format(reporting_units))
 arcpy.AddMessage("Output table: {}".format(output_table))
+
+area_units = reporting_units
+if reporting_units in ["Meters", "Kilometers"]:  # then we need a different unit for area calculations
+    area_units = "SQUAREKILOMETERS"
+elif reporting_units in ["Feet", "Miles"]:
+    area_units = "ACRES"
+
 
 # --------------------------------------
 # Function to validate script inputs
@@ -158,8 +170,9 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
             shape_type = desc.shapeType
 
             if shape_type == "Polygon":
-                arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "", "Total Area (acres)")
-                exp = '!shape.area@acres!'
+                arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "",
+                                          "Total Area ({})".format(reporting_units))
+                exp = '!shape.area@{}!'.format(reporting_units)
                 arcpy.CalculateField_management(out_layer, "ANALYSISAREA", exp, "PYTHON_9.3", None)
 
                 arcpy.AddField_management(out_layer, "ANALYSISPERCENT", "DOUBLE", "", "", "", "Percent of Area")
@@ -167,8 +180,9 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
                 arcpy.CalculateField_management(out_layer, "ANALYSISPERCENT", exp, "PYTHON_9.3", None)
 
             elif shape_type == "Polyline":
-                arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "", "Total Length (miles)")
-                exp = '!shape.length@miles!'
+                arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "",
+                                          "Total Length ({})".format(reporting_units))
+                exp = '!shape.length@{}!'.format(reporting_units)
                 arcpy.CalculateField_management(out_layer, "ANALYSISLEN", exp, "PYTHON_9.3", None)
 
             elif shape_type == "Point":
@@ -293,6 +307,7 @@ def get_area(input_fc, units):
             area += geometry.getArea('GEODESIC', units)
 
         return area
+    
     except Exception as error:
         arcpy.AddError("Get Area Error: {}".format(error))
 
@@ -352,7 +367,8 @@ def format_outputs(output_layer, out_fields):
         if analysis_type == "Basic Proximity":
             # Nothing special, just remove duplicates
             arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
-            arcpy.DeleteIdentical_management(output_table, compare_fields)
+            if group_output_records:
+                arcpy.DeleteIdentical_management(output_table, compare_fields)
         elif analysis_type == "Distance":
             # Don't remove duplicates, if there are 5 eagle nests, i want to know there
             #                          are 5 and their unique distances from the project
@@ -360,15 +376,20 @@ def format_outputs(output_layer, out_fields):
         else:
             # Feature Comparison -- summarize the output layer based on the 'keep fields'
             # Possible Stat Fields .. 'ANALYSISPERCENT', 'ANALYSISAREA', 'ANALYSISLEN', 'ANALYSISCOUNT'
-            arcpy.Statistics_analysis(output_layer, output_table, stat_fields, compare_fields)
-            arcpy.DeleteField_management(output_table, ["FREQUENCY"])
-            if "ANALYSISPERCENT" in stat_fields:
-                arcpy.AlterField_management(output_table, "SUM_ANALYSISPERCENT", "ANALYSISPERCENT", "Percent jjof Area")
-                arcpy.AlterField_management(output_table, "SUM_ANALYSISAREA", "ANALYSISAREA", "Totalhhh Area (acres)")
-            elif "ANALYSISLEN" in stat_fields:
-                arcpy.AlterField_management(output_table, "SUM_ANALYSISLEN", "ANALYSISLEN", "Total Length (miles)")
+            if group_output_records:
+                arcpy.Statistics_analysis(output_layer, output_table, stat_fields, compare_fields)
+                arcpy.DeleteField_management(output_table, ["FREQUENCY"])
+                if "ANALYSISPERCENT" in stat_fields:
+                    arcpy.AlterField_management(output_table, "SUM_ANALYSISPERCENT", "ANALYSISPERCENT", "Percent of Area")
+                    arcpy.AlterField_management(output_table, "SUM_ANALYSISAREA", "ANALYSISAREA",
+                                                "Total Area ({})".format(reporting_units))
+                elif "ANALYSISLEN" in stat_fields:
+                    arcpy.AlterField_management(output_table, "SUM_ANALYSISLEN", "ANALYSISLEN",
+                                                "Total Length ({})".format(reporting_units))
+                else:
+                    arcpy.AlterField_management(output_table, "SUM_ANALYSISCOUNT", "ANALYSISCOUNT", "Count of Features")
             else:
-                arcpy.AlterField_management(output_table, "SUM_ANALYSISCOUNT", "ANALYSISCOUNT", "Count of Features")
+                arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
 
         return True
     except Exception as error:
@@ -413,19 +434,24 @@ try:
         if shape in ["Point", "Polyline"]:
             # check if a buffer shape was provided
             if input_buffer_layer == "#":
-                arcpy.AddWarning("For point and polyline areas of interest, a buffer layer required for Feature Comparison analyses")
+                arcpy.AddWarning("For point and polyline areas of interest, a buffer layer required for "
+                                 "Feature Comparison analyses")
             else:
                 aoi_out = "empty"
-                buffer_area = get_area(input_buffer_layer, 'ACRES')
-                buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer, 'Buffer',
-                                        buffer_area)
-        else:
-            aoi_area = get_area(input_aoi, 'ACRES')
+                buffer_area = get_area(input_buffer_layer, area_units)
+                buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer,
+                                                'Buffer', buffer_area)
+        else:  # polygon analysis layer
+            aoi_area = get_area(input_aoi, area_units)
             aoi_out = feature_comparison(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI', aoi_area)
 
-            buffer_area = get_area(input_buffer_layer, 'ACRES')
-            buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer, 'Buffer',
-                                    buffer_area)
+            if input_buffer_layer != "#":
+                buffer_area = get_area(input_buffer_layer, area_units)
+                buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer,
+                                                'Buffer', buffer_area)
+            else:
+                arcpy.AddMessage("No buffer layer provided.")
+                buffer_out = "empty"
 
     elif analysis_type == "Basic Proximity":
         aoi_out = basic_proximity(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI')
@@ -437,7 +463,8 @@ try:
     else:
         aoi_out = distance_analysis_aoi(input_analysis_layer, input_aoi, interim_output_aoi)
         if input_buffer_layer != "#":
-            buffer_out = distance_analysis_buffer(input_analysis_layer, input_aoi, input_buffer_layer, interim_output_buffer)
+            buffer_out = distance_analysis_buffer(input_analysis_layer, input_aoi,
+                                                  input_buffer_layer, interim_output_buffer)
         else:
             arcpy.AddMessage("No buffer layer provided.")
             buffer_out = "empty"
