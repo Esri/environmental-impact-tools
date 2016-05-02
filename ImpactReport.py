@@ -1,16 +1,7 @@
 import arcpy
 import os, sys, json, datetime, textwrap
 
-#avoid showing urls and or url fields...hold off on this for now...
-
-#special handling for RESULTTYPE...test these changes a bit further
-
-#look at the wrapping issue with the cameo data
-# ...issue is based on the number of fields
-
 #get legend to come to life when we set the map
-
-#handle temp file cleanup on failure
 
 TOTAL_VALUE = 'TOTAL: '
 
@@ -22,24 +13,18 @@ COUNT_FIELD = 'ANALYSISCOUNT'
 PERCENT_FIELD = 'ANALYSISPERCENT'
 SUM_FIELDS = [AREA_FIELD, LEN_FIELD, COUNT_FIELD, PERCENT_FIELD]
 
-#TODO change lengths to widths
-
 NO_AOI_FIELD_NAME = 'No Results'
 NO_AOI_VALUE = 'No features intersect the area of interest'
 
-#TODO test for and handle either case in case they change in the analysis tools
 SPLIT_VAL_BUFFER = 'Buffer'
 SPLIT_VAL_AOI = 'AOI'
 
 BUFFER_TITLE = ' (within buffer)'
 
 Y_MARGIN = .025
-X_MARGIN = .05
+X_MARGIN = .06
 
 NUM_DIGITS = '{0:.2f}'
-
-PROJECT_PATH = r"C:\Users\john4818\Documents\ArcGIS\Projects\EnvImpact1.2\EnvImpact1.aprx"
-#PROJECT_PATH = "CURRENT"
 
 class MockField:
     def __init__(self, name, alias, type):
@@ -107,7 +92,7 @@ class Table:
         self.row_width = sum(self.field_widths)
 
         if self.row_width > self.content_display.elementWidth:
-            self.auto_adjust = self.adjust_row_widths(field_name_lengths)        
+            self.auto_adjust = self.adjust_row_widths()        
 
     def get_max_vals(self, rows):
         vals = []
@@ -117,16 +102,16 @@ class Table:
             x = 0
             for v in r:
                 if fr:
-                   vals.append(v)
-                   if x + 1 == len(r):
-                       fr = False                    
+                    vals.append(v)
+                    if x + 1 == len(r):
+                        fr = False                    
                 else:
                     if len(v) > len(vals[x]):
                         vals[x] = v
                 x += 1  
         return vals
 
-    def adjust_row_widths(self, field_name_lengths):
+    def adjust_row_widths(self):
         auto_adjust = []
         display_width = self.content_display.elementWidth
         overflow_width = display_width - self.row_width
@@ -144,11 +129,29 @@ class Table:
         idx = 0
         sum_widths = sum(large_field_widths)
         pos_widths = [x for x in large_field_widths if x != 0 ]
+        small_widths = {}
         for w in large_field_widths:
             if float(w)/float(sum_widths) > 0:
-                self.field_widths[idx] = display_width * (1/len(pos_widths))
-                auto_adjust.append(idx)
+                new_w = display_width * (1/len(pos_widths))
+                if new_w < w:
+                    self.field_widths[idx] = new_w
+                    auto_adjust.append(idx)
+                else:
+                    small_widths[idx] = new_w - w
             idx += 1
+
+        x=0
+        if len(small_widths) > 0:
+            t=0
+            for small_w in small_widths:
+                large_field_widths[small_w] = 0
+                t += small_widths[small_w]
+            pos_widths = [x for x in large_field_widths if x != 0 ]
+            new_adjust = t/len(pos_widths)
+            idx = 0
+            for w in large_field_widths:
+                if w > 0:
+                    self.field_widths[idx] += new_adjust
 
         self.row_width = sum(self.field_widths)
         return auto_adjust
@@ -180,6 +183,7 @@ class Table:
                 for row in self.rows:
                     v = str(row[column_index])
                     if len(v) > max_chars:
+                        v = v if not is_float(v) else NUM_DIGITS.format(float(v))
                         wrapped_val = textwrap.wrap(v, max_chars)
                         wrapped_height = (len(wrapped_val) * (self.row_height - Y_MARGIN))
                         if wrapped_height > row_heights[x]:
@@ -296,10 +300,13 @@ class Table:
         for r in self.rows:
             for i in sum_indexes:
                 v = r[i]
+                new_v = float(v) if is_float(v) else int(v)
                 if first_row:
-                    sums[i] = float(v) if is_float(v) else int(v)
+                    sums[i] = new_v
                 else:
-                    sums[i] += float(v) if is_float(v) else int(v)
+                    sums[i] += new_v
+                if is_float(new_v):
+                    r[i] = str(NUM_DIGITS.format(new_v))
             first_row = False
         num_sums = len(sums)
         if num_sums > 0:           
@@ -362,7 +369,6 @@ class Report:
         self.overflow_template = overflow_template
         self.page_num = 0
     
-        #self.aprx = arcpy.mp.ArcGISProject(PROJECT_PATH)
         self.aprx = arcpy.mp.ArcGISProject('CURRENT')
         self.temp_dir = self.aprx.homeFolder
 
@@ -681,7 +687,7 @@ class Report:
                 elm.text = f.aliasName
                 if f.type == 'Date':
                     date_fields.append(x)
-                elm.elementPositionX = self.cur_x + (X_MARGIN / 2)
+                elm.elementPositionX = self.cur_x + Y_MARGIN
                 elm.elementPositionY = self.cur_y - Y_MARGIN
                 self.cur_x += table.field_widths[x]
                 x += 1
@@ -700,11 +706,10 @@ class Report:
                     new_row = False
                 elm = field_value.clone("cell_clone")
                 if x in date_fields:
-                    print('Handle Date Fields here')
                     elm.text = v
                 else:
                     elm.text = v if not is_float(v) else NUM_DIGITS.format(float(v)) 
-                new_x = self.cur_x + (X_MARGIN / 2)
+                new_x = self.cur_x + Y_MARGIN
                 if not table.total_row_index == None:
                     if xx == len(table.rows) -1:
                         if x == table.total_row_index:
@@ -753,7 +758,7 @@ class Report:
                 base_path = os.path.dirname(self.pdf_path)
                 self.pdf_path = "{0}\\{1}.pdf".format(base_path, base_name)
         try:
-            arcpy.AddMessage("Exporting report with modified name: " + self.pdf_path)
+            arcpy.AddMessage(self.pdf_path)
             pdf_doc = arcpy.mp.PDFDocumentCreate(self.pdf_path)
         except OSError:
             arcpy.AddMessage("Unable to export report: " + self.pdf_path)
@@ -761,7 +766,6 @@ class Report:
             if len(self.pdf_paths) > 0:
                 for pdf in self.pdf_paths:
                     os.remove(pdf)
-                    self.pdf_paths.remove(pdf)
                 sys.exit()
         for pdf in self.pdf_paths:
             pdf_doc.appendPages(pdf)
@@ -773,7 +777,7 @@ class Report:
             self.path = self.aprx.homeFolder
         else:
             self.path = folder
-        self.pdf_path = os.path.join(folder, self.report_title + ".pdf")
+        self.pdf_path = os.path.join(self.path, self.report_title + ".pdf")
         self.update_layouts()
         self.export_pdf()
         return self.pdf_path
@@ -806,140 +810,40 @@ def main():
     overflow_report_template = arcpy.GetParameterAsText(8) #optional parameter for path to new pagX files
     out_folder = arcpy.GetParameterAsText(9)               #folder that will contain the final output report
 
-    tables = [t.strip("'") for t in tables.split(';')]
+    report = None
+    try:
+        tables = [t.strip("'") for t in tables.split(';')]
 
-    report = Report(report_title, sub_title, logo, map, scale_unit, report_type, map_report_template, overflow_report_template)
+        report = Report(report_title, sub_title, logo, map, scale_unit, report_type, map_report_template, overflow_report_template)
    
-    for table in tables:
-        table_title = os.path.splitext(os.path.basename(table))[0]       
-        desc = arcpy.Describe(table)
-        if desc.dataType == "FeatureLayer" or desc.dataType == "TableView":
-            fi = desc.fieldInfo
-            fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID'] and
-                           fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
-            field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID'] and
-                           fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
-        else:
-            fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
-            field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID']]
-        cur = arcpy.da.SearchCursor(table, field_names)
-        test_rows = [[str(v).replace('\n','') for v in r] for r in cur]
-        report.add_table(table_title, test_rows, fields)
+        for table in tables:
+            table_title = os.path.splitext(os.path.basename(table))[0]       
+            desc = arcpy.Describe(table)
+            if desc.dataType == "FeatureLayer" or desc.dataType == "TableView":
+                fi = desc.fieldInfo
+                fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID'] and
+                               fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
+                field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID'] and
+                               fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
+            else:
+                fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
+                field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID']]
+            cur = arcpy.da.SearchCursor(table, field_names)
+            test_rows = [[str(v).replace('\n','') for v in r] for r in cur]
+            report.add_table(table_title, test_rows, fields)
 
-    pdf = report.generate_report(out_folder)
-    os.startfile(pdf)
-
-def test():
-    report_title = "Generic Resource Assignment Analysis12345"
-    map_report_template = None
-    #map_report_template = r'C:\Users\john4818\Documents\ArcGIS\Projects\EnvImpact1.2\NewMapLayout.pagx'
-    overflow_report_template = None
-    #overflow_report_template = r'C:\Users\john4818\Documents\ArcGIS\Projects\EnvImpact1.2\NewOverflowLayout.pagx'
-    report_title = "report title"   
-    sub_title = "sub title"              
-    logo = r"C:\Solutions\EnvironmentalImpact\matplotlibTests\EnvImpact\EnvImpact\Eagle Nesting Locations within Buffer.png"                     #optional report logo image
-    tables = r"C:\Temp\New File Geodatabase.gdb\LongFieldNames".split(';')       
-    map = None                      
-    scale_unit = 'Meter'               
-    report_type = "report type"             
-
-    out_folder = r"C:\temp"  
-
-    table_title = "Has Buffer and AOI"
-    test_fields = [MockField("NestID", 'Nest ID', 'String'), MockField("C", 'C C', 'String'), MockField(PERCENT_FIELD, 'PERCENT FIELD', 'String'), MockField('ANALYSISTYPE','Analysis Type', 'String')]
-    test_rows = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg sgdfgs", "256.3553791", 'Buffer'],
-                 ["HL018", "Hillsborough", "878.4109422", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109423", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109424", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109425", 'Buffer'],
-                 ["HL018", "Hillsborough", "878.4109426", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109422", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109423", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109424", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109425", 'Buffer'],
-                 ["HL018", "Hillsborough", "878.4109426", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109422", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109423", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109424", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109425", 'Buffer'],
-                 ["HL018", "Hillsborough", "878.4109426", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109422", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109423", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109424", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109425", 'Buffer'],
-                 ["HL018", "Hillsborough", "878.4109426", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109422", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109423", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109424", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109425", 'Buffer'],
-                 ["HL018", "Hillsborough", "878.4109426", 'AOI'],
-                 ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427", 'AOI'],
-                 ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaddsdsd", "878.4109428", 'AOI'],
-                 ["HL018", "Hillsborough", "878.4109429", 'Buffer']]
-
-    table_title2 = "Only Buffer"
-    test_fields2 = [MockField("NestID", 'Nest ID', 'String'), MockField("C", 'C C', 'String'), MockField(PERCENT_FIELD, PERCENT_FIELD, 'String'), MockField('ANALYSISTYPE','Analysis Type', 'String'), MockField(AREA_FIELD, AREA_FIELD, 'string'), MockField(LEN_FIELD, LEN_FIELD, 'String')]
-    test_rows2 = [["HL054", "Hillsborough dfsdfsdf sdf sdf sdfgdfg sdg fdsg sdfg sgdfgs", "256.3553791", 'Buffer','1','2'],
-                ["HL018", "Hillsborough", "878.4109422", 'Buffer','1','2'],
-                ["HL018", "Hillsborough", "878.4109423", 'Buffer','1','2'],
-                ["HL018", "Hillsborough", "878.4109424", 'Buffer','1','2'],
-                ["HL018", "Hillsborough", "878.4109425", 'Buffer','1','2'],
-                ["HL018", "Hillsborough", "878.4109426", 'Buffer','1','2'],
-                ["HL018", "Hillsborough dfs sdffsfsdddfsdddddddddddddddddddddddddd dffffsdffffff", "878.4109427", 'Buffer','1','2'],
-                ["HL018", "Hillsborough aaaaaaaaaaaaaaaaaaaaddsdsd", "878.4109428", 'Buffer','1','2'],
-                ["HL018", "Hillsborough", "878.4109429", 'Buffer','1','2']]
-    no_result_title = "This one has no results"
-    no_result_fields = [MockField("ANALYSISTYPE", 'Analysis Type', 'String')]
-    no_result_rows = [['No results interest AOI or Buffer']]
-    
-    #create the ReportData and add the table 
-    report = Report(report_title, sub_title, logo, map, "Meter", "report_type", map_report_template, overflow_report_template)
-    report.add_table(table_title, test_rows, test_fields)
-    report.add_table(table_title2, test_rows2, test_fields2)
-    report.add_table(no_result_title, no_result_rows, no_result_fields)
-
-    pdf = report.generate_report(out_folder)
-    os.startfile(pdf)
-
-def test2():
-    report_title = "sd"             #required parameter for report title
-    sub_title = "asd"                #optional parameter for sub-title
-    logo = r"C:\Solutions\EnvironmentalImpact\matplotlibTests\EnvImpact\EnvImpact\Eagle Nesting Locations within Buffer.png"                     #optional report logo image
-    tables = r"'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_rivers';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_table';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_water_access';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_wateraccess_ptAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_demo_conversation';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_demo_marinas';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_demo_rivers';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_water_polyAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_water_ptAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\Dist_rivers_lnAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\Dist_rivers_lnAOI_2';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\dist_rivers_lnAOI3';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\Dist_rivers_ptAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\distance_rivers';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\distance_water_access';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\empty_output_example';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\fc_consv_polyAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\fc_streams_polyAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\feature_comparison_area_table';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\feature_comparison_line_table';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\feature_comparison_water_access';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_consvtn_ptAOI'" #required multivalue parameter for input tables
-    map = None                           #required parameter for the map 
-
-    scale_unit = None               #required scale unit with default set
-    report_type = "asd"             #optional report type eg. ...
-    map_report_template = None      #optional parameter for path to new pagX files
-    overflow_report_template = None #optional parameter for path to new pagX files
-    out_folder = r"C:\Solutions\EnvironmentalImpact\New folder"              #folder that will contain the final output report
-
-    tables = [t.strip("'") for t in tables.split(';')]
-
-    report = Report(report_title, sub_title, logo, map, scale_unit, report_type, map_report_template, overflow_report_template)
-   
-    for table in tables:
-        table_title = os.path.splitext(os.path.basename(table))[0]       
-        desc = arcpy.Describe(table)
-        if desc.dataType == "FeatureLayer" or desc.dataType == "TableView":
-            fi = desc.fieldInfo
-            fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID'] and
-                           fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
-            field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID'] and
-                           fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
-        else:
-            fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
-            field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID']]
-        cur = arcpy.da.SearchCursor(table, field_names)
-        test_rows = [[str(v).replace('\n','') for v in r] for r in cur]
-        report.add_table(table_title, test_rows, fields)
-
-    pdf = report.generate_report(out_folder)
-    os.startfile(pdf)
+        pdf = report.generate_report(out_folder)
+        os.startfile(pdf)
+    except Exception as ex:
+        arcpy.AddError(ex.args)
+        if report != None:
+            for pdf in report.pdf_paths:
+                if os.path.exists(pdf):
+                    os.remove(pdf)
 
 if __name__ == '__main__':
     main()
-    #test()
-    #test2()
+
+
 
 
