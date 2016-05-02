@@ -507,17 +507,18 @@ class Report:
                 overflow_table.row_width = table.row_width
                 overflow_table.max_vals = table.max_vals
                 overflow_table.total_row_index = table.total_row_index
+                overflow_table.has_buffer_rows = table.has_buffer_rows
+                overflow_table.buffer_rows = table.buffer_rows
                 table.total_row_index = None
                 self.tables.insert(x, overflow_table)
-            if table.has_buffer_rows:
-                if overflow:
-                    x += 1
-                fields = table.fields
-                if hasattr(table, 'p_fields'):
-                    if len(table.p_fields) > 0:
-                        fields = table.p_fields
-                buffer_rows_table = Table(table.title + BUFFER_TITLE, table.buffer_rows, fields)
-                self.tables.insert(x, buffer_rows_table)
+            else:
+                if table.has_buffer_rows:
+                    fields = table.fields
+                    if hasattr(table, 'p_fields'):
+                        if len(table.p_fields) > 0:
+                            fields = table.p_fields
+                    buffer_rows_table = Table(table.title + BUFFER_TITLE, table.buffer_rows, fields)
+                    self.tables.insert(x, buffer_rows_table)
 
             if table.row_count > 0:
                 table_header_background = table.table_header_background
@@ -904,13 +905,13 @@ def test2():
     report_title = "sd"             #required parameter for report title
     sub_title = "asd"                #optional parameter for sub-title
     logo = r"C:\Solutions\EnvironmentalImpact\matplotlibTests\EnvImpact\EnvImpact\Eagle Nesting Locations within Buffer.png"                     #optional report logo image
-    tables = r"C:\Solutions\Cameo\data\SampleCAMEO_data.gdb\Facilities" #required multivalue parameter for input tables
+    tables = r"'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_rivers';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_table';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_water_access';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_wateraccess_ptAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_demo_conversation';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_demo_marinas';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_demo_rivers';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_water_polyAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\bp_water_ptAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\Dist_rivers_lnAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\Dist_rivers_lnAOI_2';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\dist_rivers_lnAOI3';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\Dist_rivers_ptAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\distance_rivers';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\distance_water_access';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\empty_output_example';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\fc_consv_polyAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\fc_streams_polyAOI';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\feature_comparison_area_table';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\feature_comparison_line_table';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\feature_comparison_water_access';'C:\Solutions\EnvironmentalImpact\New folder\Analysis_Output.gdb\basic_proximity_consvtn_ptAOI'" #required multivalue parameter for input tables
     map = None                           #required parameter for the map 
 
     scale_unit = None               #required scale unit with default set
     report_type = "asd"             #optional report type eg. ...
-    map_report_template = r"C:\Users\john4818\Documents\ArcGIS\Projects\EnvImpact1.2\ModifiedMapThingy.pagx"      #optional parameter for path to new pagX files
-    overflow_report_template = r"C:\Users\john4818\Documents\ArcGIS\Projects\EnvImpact1.2\OverflowThingy.pagx" #optional parameter for path to new pagX files
+    map_report_template = None      #optional parameter for path to new pagX files
+    overflow_report_template = None #optional parameter for path to new pagX files
     out_folder = r"C:\Solutions\EnvironmentalImpact\New folder"              #folder that will contain the final output report
 
     tables = [t.strip("'") for t in tables.split(';')]
@@ -922,13 +923,16 @@ def test2():
         desc = arcpy.Describe(table)
         if desc.dataType == "FeatureLayer" or desc.dataType == "TableView":
             fi = desc.fieldInfo
-            test_fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID'] and
+            fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID'] and
+                           fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
+            field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID'] and
                            fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
         else:
-            test_fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
-        cur = arcpy.da.SearchCursor(table, test_fields)
-        test_rows = [[str(v) for v in r] for r in cur]
-        report.add_table(table_title, test_rows, test_fields)
+            fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
+            field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID']]
+        cur = arcpy.da.SearchCursor(table, field_names)
+        test_rows = [[str(v).replace('\n','') for v in r] for r in cur]
+        report.add_table(table_title, test_rows, fields)
 
     pdf = report.generate_report(out_folder)
     os.startfile(pdf)
