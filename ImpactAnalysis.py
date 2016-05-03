@@ -44,11 +44,13 @@ input_buffer_layer = args[6]
 reporting_units = args[7]
 output_table = args[8]
 
+# Termporary feature classes created during script execution
 interim_output_aoi = "interim_result_aoi"
 interim_output_buffer = "interim_result_buffer"
 interim_output_merged = "interim_result"
+interim_aoi_lines = "interim_aoi_lines"
 
-arcpy.env.overwriteOutput = True
+# arcpy.env.overwriteOutput = True  # should be set by the user in Geoprocessing Options
 output_workspace = arcpy.env.scratchWorkspace
 arcpy.env.workspace = output_workspace
 
@@ -61,6 +63,7 @@ arcpy.AddMessage("Input buffer: {}".format(input_buffer_layer))
 arcpy.AddMessage("Reporting units: {}".format(reporting_units))
 arcpy.AddMessage("Output table: {}".format(output_table))
 
+# Get units of measure squared away
 area_units = reporting_units
 if reporting_units in ["Meters", "Kilometers"]:  # then we need a different unit for area calculations
     area_units = "SQUAREKILOMETERS"
@@ -199,7 +202,7 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 
 
 # --------------------------------------
-# Distance Analysis Type
+# Distance Analysis Type -- for the Area of Interest layer
 def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
     try:
                     # Find everything intersecting the AOI
@@ -220,8 +223,8 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
                 input_shape_type = desc.shapeType
 
                 if input_shape_type == "Polygon":
-                    arcpy.PolygonToLine_management(aoi_layer, "aoi_lines")
-                    arcpy.Near_analysis(out_layer_name, "aoi_lines", None, "NO_LOCATION", "ANGLE", "GEODESIC")
+                    arcpy.PolygonToLine_management(aoi_layer, interim_aoi_lines)
+                    arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", "GEODESIC")
                 else:
                     arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
 
@@ -252,7 +255,7 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
 
 
 # --------------------------------------
-# Distance Analysis Type
+# Distance Analysis Type -- for the Buffer layer
 def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name):
     try:
         # Find everything intersecting the buffer
@@ -274,9 +277,13 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
             desc = arcpy.Describe(aoi_layer)
             input_shape_type = desc.shapeType
 
+            desc_near_layer = arcpy.Describe(out_layer_name).spatialReference
+            global reporting_units
+            reporting_units = desc_near_layer.linearUnitName
+
             if input_shape_type == "Polygon":
-                arcpy.PolygonToLine_management(aoi_layer, "aoi_lines")
-                arcpy.Near_analysis(out_layer_name, "aoi_lines", None, "NO_LOCATION", "ANGLE", "GEODESIC")
+                arcpy.PolygonToLine_management(aoi_layer, interim_aoi_lines)
+                arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", "GEODESIC")
             else:
                 arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
 
@@ -288,6 +295,7 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
                     return 'Outside AOI, within buffer'
                 else:
                     return 'Unexpected result'"""
+
             arcpy.CalculateField_management(out_layer_name, "ANALYSISLOC", exp, "PYTHON_9.3", codeblock)
 
             return out_layer_name
@@ -307,7 +315,7 @@ def get_area(input_fc, units):
             area += geometry.getArea('GEODESIC', units)
 
         return area
-    
+
     except Exception as error:
         arcpy.AddError("Get Area Error: {}".format(error))
 
@@ -373,6 +381,12 @@ def format_outputs(output_layer, out_fields):
             # Don't remove duplicates, if there are 5 eagle nests, i want to know there
             #                          are 5 and their unique distances from the project
             arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
+
+            # Update field aliases to be readable and have distance units embedded
+            arcpy.AlterField_management(output_table, "NEAR_DIST", None,
+                                        "Distance ({})".format(reporting_units))
+            arcpy.AlterField_management(output_table, "NEAR_ANGLE", None, "Direction")
+
         else:
             # Feature Comparison -- summarize the output layer based on the 'keep fields'
             # Possible Stat Fields .. 'ANALYSISPERCENT', 'ANALYSISAREA', 'ANALYSISLEN', 'ANALYSISCOUNT'
@@ -477,27 +491,31 @@ try:
     elif aoi_out == "empty":
         arcpy.AddMessage("No results found in the Area of Interest locations.")
         format_outputs(buffer_out, output_fields)
-        arcpy.Delete_management(interim_output_buffer)
 
     elif buffer_out == "empty":
         arcpy.AddMessage("No results found in the Buffer location or no buffer provided.")
         format_outputs(aoi_out, output_fields)
-        arcpy.Delete_management(interim_output_aoi)
 
     else:
         # got results from both AOI and Buffer results, merge them together before formatting...
         merged_output = output_workspace + "\\" + interim_output_merged
         arcpy.Merge_management([aoi_out, buffer_out], merged_output)
-
         arcpy.AddMessage("Results found for both the Area of Interest and Buffer locations.")
         format_outputs(merged_output, output_fields)
-
-        arcpy.AddMessage("Cleaning up interim results.")
-        arcpy.Delete_management(interim_output_aoi)
-        arcpy.Delete_management(interim_output_buffer)
 
 except Exception as err:
     arcpy.AddError("Impact Analysis Error: {}".format(err))
 
+finally:
+    # Clean up temporary files
+    arcpy.AddMessage("Cleaning up interim results.")
 
+    if arcpy.Exists(interim_output_aoi):
+        arcpy.Delete_management(interim_output_aoi)
+    if arcpy.Exists(interim_output_buffer):
+        arcpy.Delete_management(interim_output_buffer)
+    if arcpy.Exists(interim_output_merged):
+        arcpy.Delete_management(interim_output_merged)
+    if arcpy.Exists(interim_aoi_lines):
+        arcpy.Delete_management(interim_aoi_lines)
 
