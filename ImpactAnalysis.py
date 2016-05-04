@@ -163,7 +163,7 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
             return "empty"
 
         else:
-            arcpy.AddMessage(("{0} features found in {1}. Adding more information.".format(match_count, analysis_layer)))
+            arcpy.AddMessage(("Processing {0} features in {1} within {2}.".format(match_count, analysis_layer, layer_type)))
 
             arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
             exp = "'{}'".format(layer_type)
@@ -443,24 +443,40 @@ try:
 
     if analysis_type == "Feature Comparison":
 
-        layer_properties = arcpy.Describe(input_aoi)
-        shape = layer_properties.shapeType
-        if shape in ["Point", "Polyline"]:
+        aoi_layer_properties = arcpy.Describe(input_aoi)
+        aoi_shape = aoi_layer_properties.shapeType
+
+        analysis_layer_properties = arcpy.Describe(input_analysis_layer)
+        analysis_shape = analysis_layer_properties.shapeType
+
+        if aoi_shape in ["Point", "Polyline"]:
             # check if a buffer shape was provided
+
             if input_buffer_layer == "#":
                 arcpy.AddWarning("For point and polyline areas of interest, a buffer layer required for "
                                  "Feature Comparison analyses")
             else:
                 aoi_out = "empty"
-                buffer_area = get_area(input_buffer_layer, area_units)
+                if analysis_shape == "Polygon":
+                    buffer_area = get_area(input_buffer_layer, area_units)
+                else:
+                    buffer_area = 0  # for point and polyline anlaysis layers, the buffer_area is not used
                 buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer,
                                                 'Buffer', buffer_area)
+
         else:  # polygon analysis layer
-            aoi_area = get_area(input_aoi, area_units)
+
+            if analysis_shape == "Polygon":
+                aoi_area = get_area(input_aoi, area_units)
+            else:
+                aoi_area = 0
             aoi_out = feature_comparison(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI', aoi_area)
 
             if input_buffer_layer != "#":
-                buffer_area = get_area(input_buffer_layer, area_units)
+                if analysis_shape == "Polygon":
+                    buffer_area = get_area(input_buffer_layer, area_units)
+                else:
+                    buffer_area = 0
                 buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer,
                                                 'Buffer', buffer_area)
             else:
