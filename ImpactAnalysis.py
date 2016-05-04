@@ -149,7 +149,7 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
 
 # --------------------------------------
 # Feature Comparison Analysis Type
-def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, clip_area):
+def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, clip_area, aoi_shape_type):
     try:
         xy_tolerance = ""
         out_layer = output_workspace + "\\" + out_layer_name
@@ -165,14 +165,18 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
         else:
             arcpy.AddMessage(("Processing {0} features in {1} within {2}.".format(match_count, analysis_layer, layer_type)))
 
-            arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
-            exp = "'{}'".format(layer_type)
-            arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
-
             desc = arcpy.Describe(out_layer)
             shape_type = desc.shapeType
 
             if shape_type == "Polygon":
+
+                if aoi_shape_type == "Polygon":
+                    # If the AOI is a point or line, then the only results will be with the buffer,
+                    # don't need to differentiate between AOI or buffer in this case
+                    arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
+                    exp = "'{}'".format(layer_type)
+                    arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
+
                 arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "",
                                           "Total Area ({})".format(reporting_units))
                 exp = '!shape.area@{}!'.format(reporting_units)
@@ -205,50 +209,55 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 # Distance Analysis Type -- for the Area of Interest layer
 def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
     try:
-                    # Find everything intersecting the AOI
-            arcpy.MakeFeatureLayer_management(near_layer, "near_layer")
-            arcpy.SelectLayerByLocation_management("near_layer", 'intersect', aoi_layer)
+        # Find everything intersecting the AOI
+        arcpy.MakeFeatureLayer_management(near_layer, "near_layer")
+        arcpy.SelectLayerByLocation_management("near_layer", 'intersect', aoi_layer)
 
-            match_count = int(arcpy.GetCount_management("near_layer")[0])
+        match_count = int(arcpy.GetCount_management("near_layer")[0])
 
-            if match_count == 0:
-                arcpy.AddMessage(("No features found in {0}".format(aoi_layer)))
-                return "empty"
+        if match_count == 0:
+            arcpy.AddMessage(("No features found in {0}".format(aoi_layer)))
+            return "empty"
 
+        else:
+            arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, aoi_layer)))
+            arcpy.CopyFeatures_management("near_layer", out_layer_name)
+
+            desc = arcpy.Describe(aoi_layer)
+            input_shape_type = desc.shapeType
+
+            desc_near_layer = arcpy.Describe(out_layer_name).spatialReference
+            global reporting_units
+            reporting_units = desc_near_layer.linearUnitName
+
+            if input_shape_type == "Polygon":
+                arcpy.PolygonToLine_management(aoi_layer, interim_aoi_lines)
+                arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", "GEODESIC")
             else:
-                arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, aoi_layer)))
-                arcpy.CopyFeatures_management("near_layer", out_layer_name)
+                arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
 
                 desc = arcpy.Describe(aoi_layer)
                 input_shape_type = desc.shapeType
 
-                if input_shape_type == "Polygon":
-                    arcpy.PolygonToLine_management(aoi_layer, interim_aoi_lines)
-                    arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", "GEODESIC")
-                else:
-                    arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
+            exp = "getValue(!NEAR_DIST!)"
+            codeblock = """def getValue(dist):
+                    dist = round(dist, 4)
+                    if dist == 0:
+                        return 'Intersecting with AOI boundary'
+                    else:
+                        return 'Within AOI'"""
+            arcpy.CalculateField_management(out_layer_name, "ANALYSISLOC", exp, "PYTHON_9.3", codeblock)
 
-                arcpy.AddField_management(out_layer_name, "ANALYSISLOC", "TEXT", "", "", 100, "Location")
+            exp = "getValue(!NEAR_DIST!, !NEAR_ANGLE!)"
+            codeblock = """def getValue(dist, angle):
+                    dist = round(dist, 4)
+                    if dist == 0:
+                        return 0
+                    else:
+                        return angle"""
+            arcpy.CalculateField_management(out_layer_name, "NEAR_ANGLE", exp, "PYTHON_9.3", codeblock)
 
-                exp = "getValue(!NEAR_DIST!)"
-                codeblock = """def getValue(dist):
-                        dist = round(dist, 4)
-                        if dist == 0:
-                            return 'Intersecting with AOI boundary'
-                        else:
-                            return 'Within AOI'"""
-                arcpy.CalculateField_management(out_layer_name, "ANALYSISLOC", exp, "PYTHON_9.3", codeblock)
-
-                exp = "getValue(!NEAR_DIST!, !NEAR_ANGLE!)"
-                codeblock = """def getValue(dist, angle):
-                        dist = round(dist, 4)
-                        if dist == 0:
-                            return 0
-                        else:
-                            return angle"""
-                arcpy.CalculateField_management(out_layer_name, "NEAR_ANGLE", exp, "PYTHON_9.3", codeblock)
-
-                return out_layer_name
+            return out_layer_name
 
     except Exception as error:
         arcpy.AddError("Distance Analysis (AOI) Error: {}".format(error))
@@ -331,9 +340,14 @@ def format_outputs(output_layer, out_fields):
         fields = arcpy.ListFields(output_layer)
         compare_fields = []
         stat_fields = ""
+        out_fields_lower = out_fields.lower()
+        arcpy.AddMessage("FIELD CHECK ORIG: {}".format(out_fields))
+        arcpy.AddMessage("FIELD CHECK NEW: {}".format(out_fields_lower))
         for field in fields:
 
-            if field.name in out_fields:
+            field_name_lower = field.name
+            field_name_lower = field_name_lower.lower()
+            if field_name_lower in out_fields_lower:
                 # Keep Me
                 fm = arcpy.FieldMap()
                 fm.addInputField(output_layer, field.name)
@@ -412,18 +426,23 @@ def format_outputs(output_layer, out_fields):
 
 # --------------------------------------
 # Create the output table with information about there being no results
-def create_empty_output(out_table):
+def create_empty_output(out_table, message_overwrite):
     try:
 
         out_path = os.path.dirname(os.path.abspath(out_table))
         out_name = out_table.split("\\")[-1]
 
         arcpy.CreateTable_management(out_path, out_name, None, None)
-        arcpy.AddField_management(out_table, "ANALYSISNONE", "TEXT", "", "", 100, 'Analysis Result Message')
+        arcpy.AddField_management(out_table, "ANALYSISNONE", "TEXT", "", "", 150, 'Analysis Result Message')
 
         rows = arcpy.InsertCursor(out_table)
         row = rows.newRow()
-        row.setValue("ANALYSISNONE", "No features intersect the area of interest or buffer.")
+        if message_overwrite != "":
+            row.setValue("ANALYSISNONE", message_overwrite)
+        elif input_buffer_layer != "#":
+            row.setValue("ANALYSISNONE", "No features intersect the area of interest or buffer.")
+        else:
+            row.setValue("ANALYSISNONE", "No features intersect the area of interest.")
         rows.insertRow(row)
 
         del row
@@ -435,8 +454,9 @@ def create_empty_output(out_table):
 # Main
 try:
     arcpy.AddMessage("Begin Analysis: {}".format(analysis_type))
-
     valid_inputs = validate_inputs()
+    output_message = ""
+
     if not valid_inputs[0]:
         arcpy.AddError("Invalid inputs: {}".format(valid_inputs[1]))
         exit()
@@ -453,8 +473,12 @@ try:
             # check if a buffer shape was provided
 
             if input_buffer_layer == "#":
-                arcpy.AddWarning("For point and polyline areas of interest, a buffer layer required for "
+                arcpy.AddWarning("For point and polyline areas of interest, a buffer layer is required for "
                                  "Feature Comparison analyses")
+                aoi_out = "empty"
+                buffer_out = "empty"
+                output_message = "For point and polyline areas of interest, a buffer layer is required for " \
+                                 "Feature Comparison analyses"
             else:
                 aoi_out = "empty"
                 if analysis_shape == "Polygon":
@@ -462,7 +486,7 @@ try:
                 else:
                     buffer_area = 0  # for point and polyline anlaysis layers, the buffer_area is not used
                 buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer,
-                                                'Buffer', buffer_area)
+                                                'Buffer', buffer_area, aoi_shape)
 
         else:  # polygon analysis layer
 
@@ -470,7 +494,7 @@ try:
                 aoi_area = get_area(input_aoi, area_units)
             else:
                 aoi_area = 0
-            aoi_out = feature_comparison(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI', aoi_area)
+            aoi_out = feature_comparison(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI', aoi_area, aoi_shape)
 
             if input_buffer_layer != "#":
                 if analysis_shape == "Polygon":
@@ -478,7 +502,7 @@ try:
                 else:
                     buffer_area = 0
                 buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer,
-                                                'Buffer', buffer_area)
+                                                'Buffer', buffer_area, aoi_shape)
             else:
                 arcpy.AddMessage("No buffer layer provided.")
                 buffer_out = "empty"
@@ -501,8 +525,8 @@ try:
 
     arcpy.AddMessage("Creating output table.")
     if (aoi_out == "empty") & (buffer_out == "empty"):
-        arcpy.AddMessage("No results found in the Area of Interest or Buffer locations.")
-        create_empty_output(output_table)
+        arcpy.AddMessage("No results found in the Area of Interest or Buffer (if provided) locations.")
+        create_empty_output(output_table, output_message)
 
     elif aoi_out == "empty":
         arcpy.AddMessage("No results found in the Area of Interest locations.")
