@@ -179,7 +179,7 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 
                 arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "",
                                           "Total Area ({})".format(reporting_units))
-                exp = '!shape.area@{}!'.format(reporting_units)
+                exp = '!shape.geodesicArea@{}!'.format(reporting_units)
                 arcpy.CalculateField_management(out_layer, "ANALYSISAREA", exp, "PYTHON_9.3", None)
 
                 arcpy.AddField_management(out_layer, "ANALYSISPERCENT", "DOUBLE", "", "", "", "Percent of Area")
@@ -189,7 +189,7 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
             elif shape_type == "Polyline":
                 arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "",
                                           "Total Length ({})".format(reporting_units))
-                exp = '!shape.length@{}!'.format(reporting_units)
+                exp = '!shape.geodesicLength@{}!'.format(reporting_units)
                 arcpy.CalculateField_management(out_layer, "ANALYSISLEN", exp, "PYTHON_9.3", None)
 
             elif shape_type == "Point":
@@ -236,8 +236,7 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
             else:
                 arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
 
-                desc = arcpy.Describe(aoi_layer)
-                input_shape_type = desc.shapeType
+            arcpy.AddField_management(out_layer_name, "ANALYSISLOC", "TEXT", "", "", 100, "Location")
 
             exp = "getValue(!NEAR_DIST!)"
             codeblock = """def getValue(dist):
@@ -341,8 +340,7 @@ def format_outputs(output_layer, out_fields):
         compare_fields = []
         stat_fields = ""
         out_fields_lower = out_fields.lower()
-        arcpy.AddMessage("FIELD CHECK ORIG: {}".format(out_fields))
-        arcpy.AddMessage("FIELD CHECK NEW: {}".format(out_fields_lower))
+
         for field in fields:
 
             field_name_lower = field.name
