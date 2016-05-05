@@ -313,17 +313,18 @@ class Table:
                     percent_idx = sum_indexes.index(idx)
         sums = {}
         first_row = True
-        for r in self.rows:
-            for i in sum_indexes:
-                v = r[i]
-                new_v = float(v) if is_float(v) else int(v)
-                if first_row:
-                    sums[i] = new_v
-                else:
-                    sums[i] += new_v
-                if is_float(new_v):
-                    r[i] = str(NUM_DIGITS.format(new_v))
-            first_row = False
+        if len(sum_indexes) > 0:
+            for r in self.rows:
+                for i in sum_indexes:
+                    v = r[i]
+                    new_v = float(v) if is_float(v) else int(v)
+                    if first_row:
+                        sums[i] = new_v
+                    else:
+                        sums[i] += new_v
+                    if is_float(new_v):
+                        r[i] = str(NUM_DIGITS.format(new_v))
+                first_row = False
         num_sums = len(sums)
         if num_sums > 0:           
             total_row = [''] * (len(self.fields) - (num_sums + 1))
@@ -347,7 +348,7 @@ class Table:
 
         self.check_result_type()
 
-        if not self.is_overflow:
+        if not self.is_overflow and not self.full_overflow:
             self.calc_totals()
 
         #Calculate the column/row widths and the row/table heights
@@ -531,6 +532,9 @@ class Report:
                 overflow_table.total_row_index = table.total_row_index
                 overflow_table.has_buffer_rows = table.has_buffer_rows
                 overflow_table.buffer_rows = table.buffer_rows
+                if hasattr(table, 'p_fields'):
+                    if len(table.p_fields) > 0:
+                        overflow_table.p_fields = table.p_fields
                 table.total_row_index = None
                 self.tables.insert(x, overflow_table)
             else:
@@ -839,12 +843,9 @@ def main():
                 fi = desc.fieldInfo
                 fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID'] and
                                fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
-                field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID'] and
-                               fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
             else:
                 fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
-                field_names = [f.name for f in desc.fields if f.type not in ['Geometry', 'OID']]
-            cur = arcpy.da.SearchCursor(table, field_names)
+            cur = arcpy.da.SearchCursor(table, [f.name for f in fields])
             test_rows = [[str(v).replace('\n','') for v in r] for r in cur]
             report.add_table(table_title, test_rows, fields)
 
