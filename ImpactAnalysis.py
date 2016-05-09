@@ -166,16 +166,16 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
             arcpy.AddMessage(("Processing {0} features in {1} within {2}.".format(match_count, analysis_layer, layer_type)))
 
             desc = arcpy.Describe(out_layer)
-            shape_type = desc.shapeType
+            analysis_shape_type = desc.shapeType
 
-            if shape_type == "Polygon":
+            if aoi_shape_type == "Polygon":
+                # If the AOI is a point or line, then the only results will be with the buffer,
+                # don't need to differentiate between AOI or buffer in this case
+                arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
+                exp = "'{}'".format(layer_type)
+                arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
 
-                if aoi_shape_type == "Polygon":
-                    # If the AOI is a point or line, then the only results will be with the buffer,
-                    # don't need to differentiate between AOI or buffer in this case
-                    arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
-                    exp = "'{}'".format(layer_type)
-                    arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
+            if analysis_shape_type == "Polygon":
 
                 arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "",
                                           "Total Area ({})".format(reporting_units))
@@ -186,19 +186,19 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
                 exp = '(!ANALYSISAREA! / ' + str(clip_area) + ')*100'
                 arcpy.CalculateField_management(out_layer, "ANALYSISPERCENT", exp, "PYTHON_9.3", None)
 
-            elif shape_type == "Polyline":
+            elif analysis_shape_type == "Polyline":
                 arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "",
                                           "Total Length ({})".format(reporting_units))
                 exp = '!shape.geodesicLength@{}!'.format(reporting_units)
                 arcpy.CalculateField_management(out_layer, "ANALYSISLEN", exp, "PYTHON_9.3", None)
 
-            elif shape_type == "Point":
+            elif analysis_shape_type == "Point":
                 arcpy.AddField_management(out_layer, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
                 exp = '1'
                 arcpy.CalculateField_management(out_layer, "ANALYSISCOUNT", exp, "PYTHON_9.3", None)
 
             else:
-                arcpy.AddMessage("Shape type not supported: {}".format(shape_type))
+                arcpy.AddMessage("Shape type not supported: {}".format(analysis_shape_type))
 
             return out_layer
     except Exception as error:
@@ -413,7 +413,10 @@ def format_outputs(output_layer, out_fields):
                     arcpy.AlterField_management(output_table, "SUM_ANALYSISLEN", "ANALYSISLEN",
                                                 "Total Length ({})".format(reporting_units))
                 else:
-                    arcpy.AlterField_management(output_table, "SUM_ANALYSISCOUNT", "ANALYSISCOUNT", "Count of Features")
+                    arcpy.AddField_management(output_table, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
+                    exp = '!SUM_ANALYSISCOUNT!'
+                    arcpy.CalculateField_management(output_table, "ANALYSISCOUNT", exp, "PYTHON_9.3", None)
+                    arcpy.DeleteField_management(output_table, "SUM_ANALYSISCOUNT")
             else:
                 arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
 
@@ -486,7 +489,7 @@ try:
                 buffer_out = feature_comparison(input_analysis_layer, input_buffer_layer, interim_output_buffer,
                                                 'Buffer', buffer_area, aoi_shape)
 
-        else:  # polygon analysis layer
+        else:  # polygon area of interest layer layer
 
             if analysis_shape == "Polygon":
                 aoi_area = get_area(input_aoi, area_units)
