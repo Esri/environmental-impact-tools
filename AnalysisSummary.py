@@ -48,8 +48,8 @@ def create_output(out_table):
 
         arcpy.CreateTable_management(out_path, out_name, None, None)
 
-        arcpy.AddField_management(out_table, "PROPERTY", "TEXT", "", "", 100, 'Analysis Details')
-        arcpy.AddField_management(out_table, "DESCRIPTION", "TEXT", "", "", 255, '  ')
+        arcpy.AddField_management(out_table, "ANALYSISPROP", "TEXT", "", "", 100, 'Analysis Details')
+        arcpy.AddField_management(out_table, "ANALYSISDESC", "TEXT", "", "", 255, '  ')
 
         return out_table
 
@@ -141,33 +141,33 @@ try:
 
     rows = arcpy.InsertCursor(property_table)
     row = rows.newRow()
-    row.setValue("PROPERTY", "Analysis Shape Type")
-    row.setValue("DESCRIPTION", aoi_shape)
+    row.setValue("ANALYSISPROP", "Analysis Shape Type")
+    row.setValue("ANALYSISDESC", aoi_shape)
     rows.insertRow(row)
 
     if aoi_area != 0:
         row = rows.newRow()
-        row.setValue("PROPERTY", "Analysis Area")
-        row.setValue("DESCRIPTION", str(aoi_area) + " {}".format(reporting_units.lower()))
+        row.setValue("ANALYSISPROP", "Analysis Area")
+        row.setValue("ANALYSISDESC", str(aoi_area) + " {}".format(reporting_units.lower()))
         rows.insertRow(row)
     else:
         row = rows.newRow()
-        row.setValue("PROPERTY", "Analysis Area")
-        row.setValue("DESCRIPTION", aoi_description)
+        row.setValue("ANALYSISPROP", "Analysis Area")
+        row.setValue("ANALYSISDESC", aoi_description)
         rows.insertRow(row)
     if buffer_area != 0:
         row = rows.newRow()
-        row.setValue("PROPERTY", "Buffer Area")
-        row.setValue("DESCRIPTION", str(buffer_area) + " {}".format(reporting_units.lower()))
+        row.setValue("ANALYSISPROP", "Buffer Area")
+        row.setValue("ANALYSISDESC", str(buffer_area) + " {}".format(reporting_units.lower()))
         rows.insertRow(row)
     else:
         row = rows.newRow()
-        row.setValue("PROPERTY", "Buffer Area")
-        row.setValue("DESCRIPTION", buffer_description)
+        row.setValue("ANALYSISPROP", "Buffer Area")
+        row.setValue("ANALYSISDESC", buffer_description)
         rows.insertRow(row)
     row = rows.newRow()
-    row.setValue("PROPERTY", "Total Area")
-    row.setValue("DESCRIPTION", str(total_area) + " {}".format(reporting_units.lower()))
+    row.setValue("ANALYSISPROP", "Total Area")
+    row.setValue("ANALYSISDESC", str(total_area) + " {}".format(reporting_units.lower()))
     rows.insertRow(row)
 
     del row
