@@ -463,6 +463,7 @@ class Report:
             self.map_layout_name = base_name + str(self.time_stamp)
             pagx = self.update_template(template, self.map_layout_name, self.map_element_names)
         self.map_pagx = pagx
+        self.temp_files.append(self.map_pagx)
         self.aprx.importDocument(self.map_pagx)
 
     def init_overflow_layout(self, template):
@@ -476,6 +477,7 @@ class Report:
             self.overflow_layout_name = base_name + str(self.time_stamp)
             pagx = self.update_template(template, self.overflow_layout_name, self.overflow_element_names)
         self.overflow_pagx = pagx
+        self.temp_files.append(self.overflow_pagx)
         self.aprx.importDocument(self.overflow_pagx)
 
     def update_template(self, template, name, elements):
@@ -536,6 +538,7 @@ class Report:
                 else:
                     self.init_layouts(True)
                 self.set_layout('overflow', self.overflow_pagx)
+                self.temp_files.remove(self.overflow_pagx)
                 os.remove(self.overflow_pagx)
                 if table.full_overflow:
                     table.is_overflow = False
@@ -665,8 +668,8 @@ class Report:
                     user_map = maps[0]
                     ext = user_map.defaultCamera.getExtent()
                     map_frame.map = user_map
-                    map_frame.camera.setExtent(ext)
                     self.drop_add_layers(map_frame)
+                    map_frame.camera.setExtent(ext)            
             if self.scale_unit == 'Metric Units':
                 self.cur_elements['ScaleBarM'].visible = False
                 self.cur_elements['ScaleBarKM'].visible = True
@@ -708,7 +711,6 @@ class Report:
             line.elementHeight = table.table_height
             collection = table.field_widths
             if not table.total_row_index == None:
-                #full_vert.append(0)
                 f = table.total_row_index
                 while f < len(collection):
                     f += 1
@@ -849,7 +851,6 @@ class Report:
         return self.pdf_path
 
     def write_pagx(self, json, name):
-        #TODO write these to a list that we can clean at the end...should do the smae with temp layer files
         base_path = self.temp_dir
         pagx = base_path + os.sep + 'temp_' + name + '.pagx'
         with open(pagx, 'w') as write_file:
@@ -906,7 +907,9 @@ def main():
             for pdf in report.pdf_paths:
                 if os.path.exists(pdf):
                     os.remove(pdf)
-
+            for file in report.temp_files:
+                if os.path.exists(file):
+                    os.remove(file)
 if __name__ == '__main__':
     main()
 
