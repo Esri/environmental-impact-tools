@@ -9,7 +9,7 @@
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/84fd96798ae78bf9b6a249c7bcee5944.xml",
+    "metadataURI" : "CIMPATH=Metadata/00d23df2f0543ef21d2e170bbcdaddc2.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 11,
@@ -490,7 +490,7 @@
                   "joinStyle" : "Round",
                   "lineStyle3D" : "Strip",
                   "miterLimit" : 10,
-                  "width" : 1,
+                  "width" : 0,
                   "color" : {
                     "type" : "CIMRGBColor",
                     "values" : [

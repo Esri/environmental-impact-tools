@@ -9,7 +9,7 @@
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/ae2cb9b393fc695181e7a6a39c06f358.xml",
+    "metadataURI" : "CIMPATH=Metadata/4e33b9fcbaa0bd47ee4b7102894fbc51.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 11,
@@ -138,7 +138,7 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
-        "name" : "horzLine",
+        "name" : "horzLineA",
         "visible" : true,
         "rotationCenter" : {
           "x" : 0.58508361664953812,
@@ -196,7 +196,7 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
-        "name" : "vertLine",
+        "name" : "vertLineA",
         "visible" : true,
         "rotationCenter" : {
           "x" : 2.5850518767017094,
@@ -254,7 +254,7 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
-        "name" : "FieldName",
+        "name" : "FieldNameA",
         "visible" : true,
         "rotationCenter" : {
           "x" : 0.66616205078313184,
@@ -328,7 +328,7 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
-        "name" : "FieldValue",
+        "name" : "FieldValueA",
         "visible" : true,
         "rotationCenter" : {
           "x" : 0.66616205078313184,
@@ -689,12 +689,12 @@
       },
       {
         "type" : "CIMGraphicElement",
-        "anchor" : "TopLeftCorner",
+        "anchor" : "BottomLeftCorner",
         "name" : "ReportTitle",
         "visible" : true,
         "rotationCenter" : {
           "x" : 1.2780402526863508,
-          "y" : 10.165805251246155
+          "y" : 9.8640474387461552
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -746,7 +746,7 @@
               },
               "textCase" : "Normal",
               "textDirection" : "LTR",
-              "verticalAlignment" : "Top",
+              "verticalAlignment" : "Bottom",
               "verticalGlyphOrientation" : "Right",
               "wordSpacing" : 100,
               "billboardMode3D" : "FaceNearPlane"
@@ -757,7 +757,7 @@
           "text" : "Report Title",
           "shape" : {
             "x" : 1.2780402526863508,
-            "y" : 10.165805251246155
+            "y" : 9.8640474387461552
           }
         }
       },
@@ -951,7 +951,7 @@
         "horizontalPatchGap" : 5,
         "minFontSize" : 4,
         "scaleSymbols" : true,
-        "showTitle" : false,
+        "showTitle" : true,
         "textGap" : 5,
         "title" : "Legend",
         "titleGap" : 5,
@@ -1451,7 +1451,7 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
-        "name" : "EvenRowBackground",
+        "name" : "EvenRowBackgroundA",
         "visible" : true,
         "rotationCenter" : {
           "x" : 0.59475623569715719,
@@ -2541,12 +2541,12 @@
       },
       {
         "type" : "CIMGraphicElement",
-        "anchor" : "BottomLeftCorner",
-        "name" : "LegendPlaceholder",
+        "anchor" : "TopLeftCorner",
+        "name" : "EvenRowBackground",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 5.6057156707503122,
-          "y" : 3.2710412154489488
+          "x" : 5.8044813005284208,
+          "y" : 1.7511750121663399
         },
         "graphic" : {
           "type" : "CIMPolygonGraphic",
@@ -2569,7 +2569,7 @@
                       0,
                       0,
                       0,
-                      100
+                      0
                     ]
                   }
                 },
@@ -2577,11 +2577,9 @@
                   "type" : "CIMSolidFill",
                   "enable" : true,
                   "color" : {
-                    "type" : "CIMRGBColor",
+                    "type" : "CIMGrayColor",
                     "values" : [
-                      190,
-                      232,
-                      255,
+                      243,
                       100
                     ]
                   }
@@ -2596,29 +2594,29 @@
             "rings" : [
               [
                 [
-                  5.6057156707503122,
-                  9.2234564329643423,
-                  0
+                  5.8044813005284208,
+                  1.7511750121663399,
+                  null
                 ],
                 [
-                  7.9067778775140933,
-                  9.2234564329643423,
-                  0
+                  7.7948086814808013,
+                  1.7511750121663399,
+                  null
                 ],
                 [
-                  7.9067778775140933,
-                  3.2710412154489488,
-                  0
+                  7.7948086814808013,
+                  1.4872333472284511,
+                  null
                 ],
                 [
-                  5.6057156707503122,
-                  3.2710412154489488,
-                  0
+                  5.8044813005284208,
+                  1.4872333472284511,
+                  null
                 ],
                 [
-                  5.6057156707503122,
-                  9.2234564329643423,
-                  0
+                  5.8044813005284208,
+                  1.7511750121663399,
+                  null
                 ]
               ]
             ]
@@ -2627,12 +2625,128 @@
       },
       {
         "type" : "CIMGraphicElement",
-        "anchor" : "TopMidPoint",
-        "name" : "Text",
+        "anchor" : "TopLeftCorner",
+        "name" : "vertLine",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 6.8610446375984564,
-          "y" : 6.2250000000000032
+          "x" : 6.9406788890092947,
+          "y" : 2.2478979925551288
+        },
+        "graphic" : {
+          "type" : "CIMLineGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMLineSymbol",
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidStroke",
+                  "enable" : true,
+                  "capStyle" : "Round",
+                  "joinStyle" : "Round",
+                  "lineStyle3D" : "Strip",
+                  "miterLimit" : 10,
+                  "width" : 0.5,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      78,
+                      78,
+                      78,
+                      100
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "line" : {
+            "hasZ" : true,
+            "paths" : [
+              [
+                [
+                  6.9406788890092947,
+                  2.2478979925551288,
+                  null
+                ],
+                [
+                  6.9433037464745579,
+                  0.24789799255512879,
+                  null
+                ]
+              ]
+            ]
+          }
+        }
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
+        "name" : "horzLine",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 5.951093886584002,
+          "y" : 2.2678411889275507
+        },
+        "graphic" : {
+          "type" : "CIMLineGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMLineSymbol",
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidStroke",
+                  "enable" : true,
+                  "capStyle" : "Round",
+                  "joinStyle" : "Round",
+                  "lineStyle3D" : "Strip",
+                  "miterLimit" : 10,
+                  "width" : 0.5,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      78,
+                      78,
+                      78,
+                      100
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "line" : {
+            "hasZ" : true,
+            "paths" : [
+              [
+                [
+                  5.951093886584002,
+                  2.2678411889275507,
+                  null
+                ],
+                [
+                  7.951093886584002,
+                  2.2678411889275507,
+                  null
+                ]
+              ]
+            ]
+          }
+        }
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
+        "name" : "FieldName",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 5.875887115614395,
+          "y" : 2.2021866389743492
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -2650,9 +2764,9 @@
               "fontStyleName" : "Bold",
               "fontType" : "TTOpenType",
               "haloSize" : 1,
-              "height" : 17.910488711060346,
+              "height" : 10,
               "hinting" : "Default",
-              "horizontalAlignment" : "Center",
+              "horizontalAlignment" : "Left",
               "kerning" : true,
               "letterWidth" : 100,
               "ligatures" : true,
@@ -2666,9 +2780,9 @@
                     "color" : {
                       "type" : "CIMRGBColor",
                       "values" : [
-                        78,
-                        78,
-                        78,
+                        0,
+                        0,
+                        0,
                         100
                       ]
                     }
@@ -2692,10 +2806,84 @@
           },
           "blendingMode" : "Alpha",
           "placement" : "Unspecified",
-          "text" : "Imagine\nLegend\nHere",
+          "text" : "Field Name",
           "shape" : {
-            "x" : 6.8610446375984564,
-            "y" : 6.2250000000000032
+            "x" : 5.875887115614395,
+            "y" : 2.202186638974351
+          }
+        }
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
+        "name" : "FieldValue",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 5.875887115614395,
+          "y" : 1.9924426844935565
+        },
+        "lockedAspectRatio" : true,
+        "graphic" : {
+          "type" : "CIMTextGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMTextSymbol",
+              "blockProgression" : "TTB",
+              "depth3D" : 1,
+              "extrapolateBaselines" : true,
+              "fontEffects" : "Normal",
+              "fontEncoding" : "Unicode",
+              "fontFamilyName" : "Arial",
+              "fontStyleName" : "Regular",
+              "fontType" : "TTOpenType",
+              "haloSize" : 1,
+              "height" : 10,
+              "hinting" : "Default",
+              "horizontalAlignment" : "Left",
+              "kerning" : true,
+              "letterWidth" : 100,
+              "ligatures" : true,
+              "lineGapType" : "ExtraLeading",
+              "symbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        0,
+                        0,
+                        0,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
+              "symbol3DProperties" : {
+                "type" : "CIM3DSymbolProperties",
+                "dominantSizeAxis3D" : "Z",
+                "rotationOrder3D" : "XYZ",
+                "scaleZ" : 0,
+                "scaleY" : 0
+              },
+              "textCase" : "Normal",
+              "textDirection" : "LTR",
+              "verticalAlignment" : "Top",
+              "verticalGlyphOrientation" : "Right",
+              "wordSpacing" : 100,
+              "billboardMode3D" : "FaceNearPlane"
+            }
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "text" : "Field Value",
+          "shape" : {
+            "x" : 5.875887115614395,
+            "y" : 1.9924426844935565
           }
         }
       }
