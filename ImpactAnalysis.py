@@ -436,7 +436,7 @@ def create_empty_output(out_table, message_overwrite):
         out_name = out_table.split("\\")[-1]
 
         arcpy.CreateTable_management(out_path, out_name, None, None)
-        arcpy.AddField_management(out_table, "ANALYSISNONE", "TEXT", "", "", 150, 'Analysis Result Message')
+        arcpy.AddField_management(out_table, "ANALYSISNONE", "TEXT", "", "", 150, 'Analysis Result')
 
         rows = arcpy.InsertCursor(out_table)
         row = rows.newRow()
@@ -477,11 +477,11 @@ try:
 
             if input_buffer_layer == "#":
                 arcpy.AddWarning("For point and polyline areas of interest, a buffer layer is required for "
-                                 "Feature Comparison analyses")
+                                 "Feature Comparison analyses.")
                 aoi_out = "empty"
                 buffer_out = "empty"
                 output_message = "For point and polyline areas of interest, a buffer layer is required for " \
-                                 "Feature Comparison analyses"
+                                 "Feature Comparison analyses."
             else:
                 aoi_out = "empty"
                 if analysis_shape == "Polygon":
