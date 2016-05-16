@@ -37,7 +37,7 @@ args = sys.argv
 analysis_type = args[1]
 input_analysis_layer = args[2]
 output_fields = args[3]
-#group_output_records = args[4]
+# group_output_records = args[4]
 group_output_records = True  # This should just always happen for the released script
 input_aoi = args[5]
 input_buffer_layer = args[6]
@@ -345,7 +345,7 @@ def format_outputs(output_layer, out_fields):
 
             field_name_lower = field.name
             field_name_lower = field_name_lower.lower()
-            if field_name_lower in out_fields_lower:
+            if field_name_lower in out_fields_lower and field.type != "Geometry":
                 # Keep Me
                 fm = arcpy.FieldMap()
                 fm.addInputField(output_layer, field.name)
@@ -423,6 +423,8 @@ def format_outputs(output_layer, out_fields):
         return True
     except Exception as error:
         arcpy.AddError("Format Outputs Error: {}".format(error))
+        if field:
+            arcpy.AddError("Format Outputs Error: Current field: {}".format(field.aliasName))
 
 
 # --------------------------------------
