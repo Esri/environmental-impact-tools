@@ -24,12 +24,15 @@ import os
 # 1. Analysis Type: Choose from: Basic Proximity, Feature Comparison, Distance
 # 2. Analysis Layer: Feature class to be analyzed
 # 3. Output fields: from the selected input Analysis layer, which fields should be included in the output result
-# 4. Group like records:  merge records in the results so that only
+# 4. Related Table (optional): If the Analysis Layer has related tables,
+#                         optionally choose a table to report information from
+# 5. Related Field (optional): If a Related Table is selected, one field from the table to report values from
+# 6. Group like records:  merge records in the results so that only
 #                         unique combinations of attributes appear in the output
-# 5. Area of Interest: Project location. Feature Class. Point, line or polygon.
-# 6. Buffer shape (optional): pre-analyzed buffer for project area.
-# 7. Reporting Units: based on the analysis layer shape type
-# 8. Output table: the GDB path and name of the final results table
+# 7. Area of Interest: Project location. Feature Class. Point, line or polygon.
+# 8. Buffer shape (optional): pre-analyzed buffer for project area.
+# 9. Reporting Units: based on the analysis layer shape type
+# 10. Output table: the GDB path and name of the final results table
 # Interim results will be written to the Scratch workspace
 
 args = sys.argv
@@ -37,18 +40,22 @@ args = sys.argv
 analysis_type = args[1]
 input_analysis_layer = args[2]
 output_fields = args[3]
+related_table = args[4]
+related_field = args[5]
 # group_output_records = args[4]
 group_output_records = True  # This should just always happen for the released script
-input_aoi = args[5]
-input_buffer_layer = args[6]
-reporting_units = args[7]
-output_table = args[8]
+input_aoi = args[7]
+input_buffer_layer = args[8]
+reporting_units = args[9]
+output_table = args[10]
 
 # Termporary feature classes created during script execution
 interim_output_aoi = "interim_result_aoi"
 interim_output_buffer = "interim_result_buffer"
 interim_output_merged = "interim_result"
 interim_aoi_lines = "interim_aoi_lines"
+interim_analysis_key = "interim_analysis_layer"
+interim_related_result = "interim_result_related"
 
 # arcpy.env.overwriteOutput = True  # should be set by the user in Geoprocessing Options
 output_workspace = arcpy.env.scratchWorkspace
@@ -57,11 +64,14 @@ arcpy.env.workspace = output_workspace
 arcpy.AddMessage("Analysis Type: {}".format(analysis_type))
 arcpy.AddMessage("Input analysis layer: {}".format(input_analysis_layer))
 arcpy.AddMessage("Output fields: {}".format(output_fields))
+arcpy.AddMessage("Related table: {}".format(related_table))
+arcpy.AddMessage("Related field: {}".format(related_field))
 arcpy.AddMessage("Group like records: {}".format(group_output_records))
 arcpy.AddMessage("Input AOI: {}".format(input_aoi))
 arcpy.AddMessage("Input buffer: {}".format(input_buffer_layer))
 arcpy.AddMessage("Reporting units: {}".format(reporting_units))
 arcpy.AddMessage("Output table: {}".format(output_table))
+arcpy.AddMessage("- - - - - - - - - - - - - - - - - - - ")
 
 # Get units of measure squared away
 area_units = reporting_units
@@ -69,6 +79,14 @@ if reporting_units in ["Meters", "Kilometers"]:  # then we need a different unit
     area_units = "SQUAREKILOMETERS"
 elif reporting_units in ["Feet", "Miles"]:
     area_units = "ACRES"
+
+# Related Table Variables
+foreign_key = ""
+primary_key = ""
+aoi_key_values = ""
+buffer_key_values = ""
+origin_OID_field = ""
+related_table_full_path = ""
 
 
 # --------------------------------------
@@ -119,6 +137,112 @@ def validate_inputs():
 
 # --------------------------------------
 # Basic Proximity Analysis Type
+def check_related_records(input_fc, rel_table):
+    try:
+        global foreign_key
+        global primary_key
+        global origin_OID_field
+        global related_table_full_path
+
+        arcpy.AddMessage("Collecting related table information")
+
+        fc_desc = arcpy.Describe(input_fc)
+        for j,rel in enumerate(fc_desc.relationshipClassNames):
+            rel_desc = arcpy.Describe(os.path.dirname(fc_desc.catalogPath) + "\\" + rel)
+            if rel_desc.isAttachmentRelationship:
+                continue
+
+            destination = rel_desc.destinationClassNames
+            if rel_table in destination:
+                for key_name, key_role, unk in rel_desc.originClassKeys:
+                    # print "Name: {}      Role: {}".format(key_name, key_role)
+                    if key_role == "OriginForeign":
+                        foreign_key = key_name
+                    elif key_role == "OriginPrimary":
+                        primary_key = key_name
+
+        # get the full path for the related table
+        dir_name = os.path.dirname(fc_desc.catalogPath)
+        dir_desc = arcpy.Describe(dir_name)
+        if hasattr(dir_desc, "datasetType") and dir_desc.datasetType == "FeatureDataset":
+            dir_name = os.path.dirname(dir_name)
+        related_table_full_path = dir_name + "\\" + related_table
+
+        # check if the primary key is the OID, if it is, we need to kick it back
+        if fc_desc.hasOID:
+            origin_OID_field = fc_desc.OIDFieldName
+            if fc_desc.OIDFieldName.lower() == primary_key.lower():
+                # need to skip this
+                arcpy.AddWarning("Check Related Records: The primary key for the selected related table and "
+                                 "field is the ObjectID. ObjectID field types are not supported as primary keys "
+                                 "for {} Analysis. Related records will not be analyzed".format(analysis_type))
+                foreign_key = ""
+                primary_key = ""
+                return ""
+
+        # check if the primary key is a GlobalID, if it is, we need to copy the dataset preserving the global id value
+        primary_key_field = arcpy.ListFields(input_fc, primary_key)[0]
+        if primary_key_field.type == "GlobalID":
+            field_mapping = arcpy.FiledMappings()
+            for field in arcpy.ListFields(input_fc):
+                if field.type != "OID" and field.type != "GlobalID":
+                    fm = arcpy.FieldMap()
+                    fm.addInputField(input_fc, field.name)
+                    field_mapping.addFieldMap(fm)
+            # create a mapping to map the GlobalID into
+            fm = arcpy.FieldMap()
+            fm.addInputField(input_fc, primary_key_field.name)
+            fm.mergeRule = 'First'
+            f_name = fm.outputField
+            f_name.name = "ANALYSISKEY"
+            f_name.aliasName = "Relationship Key Field"
+            f_name.type = "Guid"
+            fm.outputField = f_name
+            field_mapping.addFieldMap(fm)
+
+            arcpy.CopyFeatures_management(input_fc, interim_analysis_key)
+            # Update the primary key field to the copy --
+            primary_key = "ANALYSISKEY"
+            return output_workspace + "\\" + interim_analysis_key
+
+        else:
+            return input_fc
+
+    except Exception as error:
+        arcpy.AddError("Check Related Records: {}".format(error))
+
+
+# --------------------------------------
+# Get key values for related records
+def get_key_values(selected_layer, analysis_layer, layer_type):
+    try:
+        global aoi_key_values
+        global buffer_key_values
+
+        arcpy.AddMessage("Collecting related record key values ({}).".format(layer_type))
+
+        selected_layer = arcpy.Describe(selected_layer)
+        selected_ids = selected_layer.FIDset
+        selected_ids = selected_ids.split(';')
+        selected_ids = ", ".join(selected_ids)
+        # arcpy.AddMessage("Selected IDs: {}".format(selected_ids))
+        if layer_type == "AOI":
+            aoi_key_values = [row[0] for row in arcpy.da.SearchCursor(analysis_layer, primary_key,
+                                                                      "{0} IN ({1})".format(origin_OID_field,
+                                                                                            selected_ids))]
+            # arcpy.AddMessage("Selected AOI primary key values: {}".format(aoi_key_values))
+        else:
+            buffer_key_values = [row[0] for row in arcpy.da.SearchCursor(analysis_layer, primary_key,
+                                                                         "{0} IN ({1})".format(origin_OID_field,
+                                                                                               selected_ids))]
+            # arcpy.AddMessage("Selected Buffer primary key values: {}".format(buffer_key_values))
+
+    except Exception as error:
+        arcpy.AddError("Get Key Values: {}".format(error))
+
+
+# --------------------------------------
+# Basic Proximity Analysis Type
 def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type):
     try:
         out_layer = output_workspace + "\\" + out_layer_name
@@ -133,6 +257,11 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
             return "empty"
 
         else:
+            # Removed Get Key Values call - if primary key is persisted through the result, this shouldn't be needed
+            # # If a field from a related table has been identified, then get a list of key values
+            # if primary_key:
+            #     get_key_values(out_layer_name, analysis_layer, layer_type)
+
             arcpy.AddMessage(("{0} features found in {1}".format(match_count, analysis_layer)))
 
             arcpy.CopyFeatures_management(out_layer_name, out_layer)
@@ -168,13 +297,6 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
             desc = arcpy.Describe(out_layer)
             analysis_shape_type = desc.shapeType
 
-            if aoi_shape_type == "Polygon":
-                # If the AOI is a point or line, then the only results will be with the buffer,
-                # don't need to differentiate between AOI or buffer in this case
-                arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
-                exp = "'{}'".format(layer_type)
-                arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
-
             if analysis_shape_type == "Polygon":
 
                 arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "",
@@ -199,6 +321,13 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 
             else:
                 arcpy.AddMessage("Shape type not supported: {}".format(analysis_shape_type))
+
+            if aoi_shape_type == "Polygon":
+                # If the AOI is a point or line, then the only results will be with the buffer,
+                # don't need to differentiate between AOI or buffer in this case
+                arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
+                exp = "'{}'".format(layer_type)
+                arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
 
             return out_layer
     except Exception as error:
@@ -369,6 +498,13 @@ def format_outputs(output_layer, out_fields):
                 field_mapper.addFieldMap(fm)
                 compare_fields.append(field.name)
 
+            elif field.name in primary_key:
+                # Keep Me -- need this for related records
+                fm = arcpy.FieldMap()
+                fm.addInputField(output_layer, field.name)
+                field_mapper.addFieldMap(fm)
+                compare_fields.append(field.name)
+
             elif field.type.upper() in ["OID"]:
                 # Keep Me
                 fm = arcpy.FieldMap()
@@ -380,51 +516,139 @@ def format_outputs(output_layer, out_fields):
                 # arcpy.AddMessage("{}: Delete Me".format(field.name))
                 continue
 
-        out_path = os.path.dirname(os.path.abspath(output_table))
-        out_name = output_table.split("\\")[-1]
+        # if related records need to be included -- break here and create another interim result before the final
+        if primary_key:
+            out_path = output_workspace
+            out_name = interim_related_result
+        else:
+            out_path = os.path.dirname(os.path.abspath(output_table))
+            out_name = output_table.split("\\")[-1]
+
+        out_table = out_path + "\\" + out_name
 
         # Clean up the results by deleting or merging identical records
         if analysis_type == "Basic Proximity":
             # Nothing special, just remove duplicates
             arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
             if group_output_records:
-                arcpy.DeleteIdentical_management(output_table, compare_fields)
+                arcpy.DeleteIdentical_management(out_table, compare_fields)
         elif analysis_type == "Distance":
             # Don't remove duplicates, if there are 5 eagle nests, i want to know there
             #                          are 5 and their unique distances from the project
             arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
 
             # Update field aliases to be readable and have distance units embedded
-            arcpy.AlterField_management(output_table, "NEAR_DIST", None,
+            arcpy.AlterField_management(out_table, "NEAR_DIST", None,
                                         "Distance ({})".format(reporting_units))
-            arcpy.AlterField_management(output_table, "NEAR_ANGLE", None, "Direction")
+            arcpy.AlterField_management(out_table, "NEAR_ANGLE", None, "Direction")
 
         else:
             # Feature Comparison -- summarize the output layer based on the 'keep fields'
             # Possible Stat Fields .. 'ANALYSISPERCENT', 'ANALYSISAREA', 'ANALYSISLEN', 'ANALYSISCOUNT'
             if group_output_records:
-                arcpy.Statistics_analysis(output_layer, output_table, stat_fields, compare_fields)
-                arcpy.DeleteField_management(output_table, ["FREQUENCY"])
+                arcpy.Statistics_analysis(output_layer, out_table, stat_fields, compare_fields)
+                arcpy.DeleteField_management(out_table, ["FREQUENCY"])
                 if "ANALYSISPERCENT" in stat_fields:
-                    arcpy.AlterField_management(output_table, "SUM_ANALYSISPERCENT", "ANALYSISPERCENT", "Percent of Area")
-                    arcpy.AlterField_management(output_table, "SUM_ANALYSISAREA", "ANALYSISAREA",
+                    arcpy.AlterField_management(out_table, "SUM_ANALYSISPERCENT", "ANALYSISPERCENT", "Percent of Area")
+                    arcpy.AlterField_management(out_table, "SUM_ANALYSISAREA", "ANALYSISAREA",
                                                 "Total Area ({})".format(reporting_units))
                 elif "ANALYSISLEN" in stat_fields:
-                    arcpy.AlterField_management(output_table, "SUM_ANALYSISLEN", "ANALYSISLEN",
+                    arcpy.AlterField_management(out_table, "SUM_ANALYSISLEN", "ANALYSISLEN",
                                                 "Total Length ({})".format(reporting_units))
                 else:
-                    arcpy.AddField_management(output_table, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
+                    arcpy.AddField_management(out_table, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
                     exp = '!SUM_ANALYSISCOUNT!'
-                    arcpy.CalculateField_management(output_table, "ANALYSISCOUNT", exp, "PYTHON_9.3", None)
-                    arcpy.DeleteField_management(output_table, "SUM_ANALYSISCOUNT")
+                    arcpy.CalculateField_management(out_table, "ANALYSISCOUNT", exp, "PYTHON_9.3", None)
+                    arcpy.DeleteField_management(out_table, "SUM_ANALYSISCOUNT")
             else:
                 arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
+
+        # if related records need to be included -- add related values to result table
+        if primary_key:
+            arcpy.AddMessage("Adding related table values to result.")
+
+            # create a new table with same fields as the interim result
+            out_path = os.path.dirname(os.path.abspath(output_table))
+            out_name = output_table.split("\\")[-1]
+            # arcpy.AddMessage("New output table: {}\\{}".format(out_path, out_name))
+            # arcpy.AddMessage("Template table: {}".format(interim_related_result))
+            arcpy.CreateTable_management(out_path, out_name, interim_related_result, None)
+
+            # Get the field properties from the related table
+            related_field_props = arcpy.ListFields(related_table_full_path, related_field)
+
+            #  Add a field to contain the selected related table field values
+            arcpy.AddField_management(output_table, related_field_props[0].name, related_field_props[0].type,
+                                      related_field_props[0].precision, related_field_props[0].scale,
+                                      related_field_props[0].length, related_field_props[0].aliasName,
+                                      "NULLABLE", "NON_REQUIRED", None)
+
+            # prep an insert cursor for the final results table
+            result_fields = arcpy.ListFields(output_table)
+            result_field_names = []
+            empty_result_value = []
+            for field in result_fields:
+                # if the field is the OID skip it
+                if field.type != "OID":
+                    result_field_names.append(field.name)
+                    # if the current field is the analysis type field or related table field -
+                    #                                   then do not add an empty value for it
+                    if field.name != "ANALYSISTYPE" and field.name != related_field:
+                        empty_result_value.append(None)
+
+            # arcpy.AddMessage("Result fields: {}".format(result_field_names))
+            # Prep parameters to be used during the process
+            foreign_key_formatted = arcpy.AddFieldDelimiters(arcpy.Describe(related_table_full_path).path, foreign_key)
+            foreign_key_type = arcpy.ListFields(related_table_full_path, foreign_key)[0].type
+
+            # cycle through the interim result table
+            with arcpy.da.SearchCursor(interim_related_result, "*") as records:
+                fields = records.fields
+                key_field_index = fields.index(primary_key)
+
+                if "ANALYSISTYPE" in result_field_names:
+                    analysis_type_index = fields.index("ANALYSISTYPE")
+
+                for record in records:
+                    # query the related table to get the list of related values
+                    current_key = record[key_field_index]
+
+                    if "ANALYSISTYPE" in result_field_names:
+                        current_analysis_type = record[analysis_type_index]
+                    if foreign_key_type == "String":
+                        current_key = "'{}'".format(current_key)
+
+                    whereclause = "{} in ({})".format(foreign_key_formatted, current_key)
+
+                    # strip OID
+                    origin_values = list(record)
+                    origin_values.pop(0)
+                    # arcpy.AddMessage("Current record: {}".format(origin_values))
+                    with arcpy.da.SearchCursor(related_table_full_path, related_field, whereclause) as related_values:
+
+                        with arcpy.da.InsertCursor(output_table, result_field_names) as result_cursor:
+                            # Loop through the related values list and insert them into the final results table
+                            for i, value in enumerate(related_values):
+                                related_value_only = list(empty_result_value)
+                                if i == 0:
+                                    # add a record into the result table for the 'parent' record + one related value
+                                    origin_values.extend(value)
+                                    # arcpy.AddMessage("Origin Values: {}".format(origin_values))
+                                    result_cursor.insertRow(origin_values)
+                                else:
+                                    # add a record into the result table for each additional related value
+                                    value_list = list(value)
+                                    if "ANALYSISTYPE" in result_field_names:
+                                        # the index for the analysis type field will be off by 1 because it's based
+                                        #                                  on the record that includes an OID field
+                                        related_value_only.insert((analysis_type_index - 1), current_analysis_type)
+                                    related_value_only.extend(value_list)
+                                    # arcpy.AddMessage(related_value_only)
+                                    result_cursor.insertRow(related_value_only)
 
         return True
     except Exception as error:
         arcpy.AddError("Format Outputs Error: {}".format(error))
-        if field:
-            arcpy.AddError("Format Outputs Error: Current field: {}".format(field.aliasName))
 
 
 # --------------------------------------
@@ -463,6 +687,10 @@ try:
     if not valid_inputs[0]:
         arcpy.AddError("Invalid inputs: {}".format(valid_inputs[1]))
         exit()
+
+    # if related fields are chosen, then we need to ensure the primary key is preserved
+    if related_field:
+        input_analysis_layer = check_related_records(input_analysis_layer, related_table)
 
     if analysis_type == "Feature Comparison":
 
@@ -561,4 +789,9 @@ finally:
         arcpy.Delete_management(interim_output_merged)
     if arcpy.Exists(interim_aoi_lines):
         arcpy.Delete_management(interim_aoi_lines)
+    if arcpy.Exists(interim_analysis_key):
+        arcpy.Delete_management(interim_analysis_key)
+    if arcpy.Exists(interim_related_result):
+        arcpy.Delete_management(interim_related_result)
+
 
