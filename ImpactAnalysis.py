@@ -27,12 +27,12 @@ import os
 # 4. Related Table (optional): If the Analysis Layer has related tables,
 #                         optionally choose a table to report information from
 # 5. Related Field (optional): If a Related Table is selected, one field from the table to report values from
-# 6. Group like records:  merge records in the results so that only
+# -. Group like records:  merge records in the results so that only
 #                         unique combinations of attributes appear in the output
-# 7. Area of Interest: Project location. Feature Class. Point, line or polygon.
-# 8. Buffer shape (optional): pre-analyzed buffer for project area.
-# 9. Reporting Units: based on the analysis layer shape type
-# 10. Output table: the GDB path and name of the final results table
+# 6. Area of Interest: Project location. Feature Class. Point, line or polygon.
+# 7. Buffer shape (optional): pre-analyzed buffer for project area.
+# 8. Reporting Units: based on the analysis layer shape type
+# 9. Output table: the GDB path and name of the final results table
 # Interim results will be written to the Scratch workspace
 
 args = sys.argv
@@ -44,10 +44,10 @@ related_table = args[4]
 related_field = args[5]
 # group_output_records = args[4]
 group_output_records = True  # This should just always happen for the released script
-input_aoi = args[7]
-input_buffer_layer = args[8]
-reporting_units = args[9]
-output_table = args[10]
+input_aoi = args[6]
+input_buffer_layer = args[7]
+reporting_units = args[8]
+output_table = args[9]
 
 # Termporary feature classes created during script execution
 interim_output_aoi = "interim_result_aoi"
