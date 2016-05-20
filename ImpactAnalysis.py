@@ -529,9 +529,13 @@ def format_outputs(output_layer, out_fields):
         # Clean up the results by deleting or merging identical records
         if analysis_type == "Basic Proximity":
             # Nothing special, just remove duplicates
-            arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
             if group_output_records:
-                arcpy.DeleteIdentical_management(out_table, compare_fields)
+                # Using the summary statistics tool because Remove Duplicates requires an Advanced License
+                arcpy.Statistics_analysis(output_layer, out_table, "ANALYSISTYPE COUNT", compare_fields)
+                arcpy.DeleteField_management(out_table, ["FREQUENCY"])
+                arcpy.DeleteField_management(out_table, ["COUNT_ANALYSISTYPE"])
+            else:
+                arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
         elif analysis_type == "Distance":
             # Don't remove duplicates, if there are 5 eagle nests, i want to know there
             #                          are 5 and their unique distances from the project
