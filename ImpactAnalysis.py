@@ -392,6 +392,27 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
 
 
 # --------------------------------------
+# Function to abbreviate units of measure for readability
+def abbreviate_units(units):
+    try:
+        lower_units = units.lower()
+        return {'acres': 'acres',
+                'hectares': 'hectares',
+                'squaremiles': 'sq mi',
+                'squarekilometers': 'sq km',
+                'squaremeters': 'sq m',
+                'squarefeet': 'sq ft',
+                'miles': 'mi',
+                'kilometers': 'km',
+                'meters': 'm',
+                'feet': 'ft'
+                }.get(lower_units, units)
+
+    except Exception as error:
+        arcpy.AddError('Abbreviate Units Error: {}'.format(error))
+
+
+# --------------------------------------
 # Distance Analysis Type -- for the Buffer layer
 def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name):
     try:
@@ -526,6 +547,7 @@ def format_outputs(output_layer, out_fields):
 
         out_table = out_path + "\\" + out_name
 
+        abbreviated_units = abbreviate_units(reporting_units)
         # Clean up the results by deleting or merging identical records
         if analysis_type == "Basic Proximity":
             # Nothing special, just remove duplicates
@@ -543,7 +565,7 @@ def format_outputs(output_layer, out_fields):
 
             # Update field aliases to be readable and have distance units embedded
             arcpy.AlterField_management(out_table, "NEAR_DIST", None,
-                                        "Distance ({})".format(reporting_units))
+                                        "Distance ({})".format(abbreviated_units))
             arcpy.AlterField_management(out_table, "NEAR_ANGLE", None, "Direction")
 
         else:
@@ -555,10 +577,10 @@ def format_outputs(output_layer, out_fields):
                 if "ANALYSISPERCENT" in stat_fields:
                     arcpy.AlterField_management(out_table, "SUM_ANALYSISPERCENT", "ANALYSISPERCENT", "Percent of Area")
                     arcpy.AlterField_management(out_table, "SUM_ANALYSISAREA", "ANALYSISAREA",
-                                                "Total Area ({})".format(reporting_units))
+                                                "Total Area ({})".format(abbreviated_units))
                 elif "ANALYSISLEN" in stat_fields:
                     arcpy.AlterField_management(out_table, "SUM_ANALYSISLEN", "ANALYSISLEN",
-                                                "Total Length ({})".format(reporting_units))
+                                                "Total Length ({})".format(abbreviated_units))
                 else:
                     arcpy.AddField_management(out_table, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
                     exp = '!SUM_ANALYSISCOUNT!'
