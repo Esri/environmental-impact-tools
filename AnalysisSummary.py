@@ -19,6 +19,7 @@
 import arcpy
 import sys
 import os
+import locale
 
 # Anticipated inputs ...
 # 1. Area of Interest: Project location. Feature Class. Point, line or polygon.
@@ -75,35 +76,85 @@ def get_area(input_fc, units):
 
 
 # --------------------------------------
-# Function to calculate areas
+# Function to count points
 def get_point_info(input_fc):
     try:
         result = arcpy.GetCount_management(input_fc)
         point_count = int(result.getOutput(0))
 
-        return "{} points".format(point_count)
+        if point_count == 0:
+            message = "No points in area of interest"
+        elif point_count == 1:
+            # for row in arcpy.da.SearchCursor(input_fc, ["SHAPE@XY"]):
+            #     x, y = row[0]
+            # message = "Point at {}, {}".format(x, y)
+            message = "1 point"
+        else:
+            message = "{} points".format(point_count)
 
+        return message
     except Exception as error:
         arcpy.AddError('Get Point Info Error: {}'.format(error))
 
 
 # --------------------------------------
-# Function to calculate areas
-def get_line_info(input_fc):
+# Function to calculate lengths
+def get_line_info(input_fc, units):
     try:
-        result = arcpy.GetCount_management(input_fc)
-        line_count = int(result.getOutput(0))
+        geometries = arcpy.CopyFeatures_management(input_fc, arcpy.Geometry())
+        length = 0
 
-        return "{} lines".format(line_count)
+        for geometry in geometries:
+            length += geometry.getLength('GEODESIC', units)
+
+        return length
 
     except Exception as error:
         arcpy.AddError('Get Line Info Error: {}'.format(error))
 
 
 # --------------------------------------
+# Function to abbreviate units of measure for readability
+def abbreviate_units(units):
+    try:
+        lower_units = units.lower()
+        return {'acres': 'acres',
+                'hectares': 'hectares',
+                'squaremiles': 'sq mi',
+                'squarekilometers': 'sq km',
+                'squaremeters': 'sq m',
+                'squarefeet': 'sq ft',
+                'miles': 'mi',
+                'kilometers': 'km',
+                'meters': 'm',
+                'feet': 'ft'
+                }.get(lower_units, "none")
+
+    except Exception as error:
+        arcpy.AddError('Abbreviate Units Error: {}'.format(error))
+
+
+# --------------------------------------
+# Function to abbreviate units of measure for readability
+def get_area_units(units):
+    try:
+        lower_units = units.lower()
+        return {'miles': 'squaremiles',
+                'kilometers': 'squarekilometers',
+                'meters': 'squaremeters',
+                'feet': 'squarefeet'
+                }.get(lower_units, "none")
+
+    except Exception as error:
+        arcpy.AddError('Abbreviate Units Error: {}'.format(error))
+
+
+# --------------------------------------
 # Main
 
 try:
+    locale.setlocale(locale.LC_ALL, '')
+
     property_table = create_output(output_table)
 
     # Describe Area of Interest properties
@@ -111,21 +162,26 @@ try:
     aoi_shape = aoi_properties.shapeType
     aoi_description = ""  # in the case the aoi is not a polygon
     buffer_description = ""
+    aoi_length = 0
+    area_units = reporting_units
 
     if aoi_shape == "Polygon":
         aoi_area = get_area(input_aoi, reporting_units)
+    elif aoi_shape == "Polyline":
+        aoi_area = 0
+        aoi_length = get_line_info(input_aoi, reporting_units)
+        # in the case of a polyline aoi, need to get complementary area units
+        area_units = get_area_units(reporting_units)
+        arcpy.AddMessage("Calculating buffer area as {}.".format(area_units))
     else:
         aoi_area = 0
-        if aoi_shape == "Point":  # get some point info
-            aoi_description = get_point_info(input_aoi)
-        elif aoi_shape == "Polyline":  # get some line info
-            aoi_description = get_line_info(input_aoi)
+        aoi_description = get_point_info(input_aoi)
 
     total_area = aoi_area
 
     # If a buffer has been used, get the area of the buffer
     if input_buffer_layer != "#":
-        buffer_area = get_area(input_buffer_layer, reporting_units)
+        buffer_area = get_area(input_buffer_layer, area_units)
     else:
         buffer_area = 0
         buffer_description = "No buffer defined."
@@ -134,48 +190,46 @@ try:
     # format the numbers to be nicely readable
     if total_area != 0:
         total_area = round(total_area, 2)
+        total_area = locale.format('%.2f', total_area, grouping=True)
     if aoi_area != 0:
         aoi_area = round(aoi_area, 2)
-    if buffer_area !=0:
-        buffer_area = round(buffer_area, 2)
-
-    rows = arcpy.InsertCursor(property_table)
-    row = rows.newRow()
-    row.setValue("ANALYSISPROP", "Analysis Shape Type")
-    row.setValue("ANALYSISDESC", aoi_shape)
-    rows.insertRow(row)
-
-    if aoi_area != 0:
-        row = rows.newRow()
-        row.setValue("ANALYSISPROP", "Analysis Area")
-        row.setValue("ANALYSISDESC", str(aoi_area) + " {}".format(reporting_units.lower()))
-        rows.insertRow(row)
-    else:
-        row = rows.newRow()
-        row.setValue("ANALYSISPROP", "Analysis Area")
-        row.setValue("ANALYSISDESC", aoi_description)
-        rows.insertRow(row)
+        aoi_area = locale.format('%.2f', aoi_area, grouping=True)
     if buffer_area != 0:
-        row = rows.newRow()
-        row.setValue("ANALYSISPROP", "Buffer Area")
-        row.setValue("ANALYSISDESC", str(buffer_area) + " {}".format(reporting_units.lower()))
-        rows.insertRow(row)
-    else:
-        row = rows.newRow()
-        row.setValue("ANALYSISPROP", "Buffer Area")
-        row.setValue("ANALYSISDESC", buffer_description)
-        rows.insertRow(row)
-    row = rows.newRow()
-    row.setValue("ANALYSISPROP", "Total Area")
-    row.setValue("ANALYSISDESC", str(total_area) + " {}".format(reporting_units.lower()))
-    rows.insertRow(row)
+        buffer_area = round(buffer_area, 2)
+        buffer_area = locale.format('%.2f', buffer_area, grouping=True)
+    if aoi_length != 0:
+        aoi_length = round(aoi_length, 2)
+        aoi_length = locale.format('%.2f', aoi_length, grouping=True)
 
-    del row
-    del rows
+    # populate the output table with information
+    with arcpy.da.InsertCursor(property_table, ["ANALYSISPROP", "ANALYSISDESC"]) as prop_cursor:
+        prop_cursor.insertRow(["Analysis Shape Type", aoi_shape])
+
+        # Next, insert the AOI descriptive information
+        if aoi_shape == "Polygon":
+            description = str(aoi_area) + " {}".format(abbreviate_units(reporting_units))
+            prop_cursor.insertRow(["Analysis Area", description])
+        elif aoi_shape == "Polyline":
+            description = str(aoi_length) + " {}".format(abbreviate_units(reporting_units))
+            prop_cursor.insertRow(["Analysis Length", description])
+        else:
+            prop_cursor.insertRow(["Analysis Length", aoi_description])
+
+        # Next, insert the buffer descriptive information if one was entered
+        if buffer_area != 0:
+            description = str(buffer_area) + " {}".format(abbreviate_units(area_units))
+            prop_cursor.insertRow(["Buffer Area", description])
+        else:
+            prop_cursor.insertRow(["Buffer Area", buffer_description])
+
+        # Lastly, if a buffer was entered and the aoi was a polygon layer, provide a total area
+        if aoi_area != 0 and buffer_area != 0:
+            description = str(total_area) + " {}".format(abbreviate_units(reporting_units))
+            prop_cursor.insertRow(["Total Area", description])
+        else:
+            prop_cursor.insertRow([" ", " "])
 
 except Exception as main_error:
     arcpy.AddError("Analysis Summary Error: {}".format(main_error))
     if arcpy.Exists(output_table):
         arcpy.Delete_management(output_table)
-
-
