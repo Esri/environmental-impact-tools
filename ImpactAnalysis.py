@@ -405,6 +405,8 @@ def abbreviate_units(units):
                 'miles': 'mi',
                 'kilometers': 'km',
                 'meters': 'm',
+                'meter': 'm',
+                'us-foot': 'ft',
                 'feet': 'ft'
                 }.get(lower_units, units)
 
@@ -715,7 +717,7 @@ try:
         exit()
 
     # if related fields are chosen, then we need to ensure the primary key is preserved
-    if related_field:
+    if related_field != "#" and related_field != "":
         input_analysis_layer = check_related_records(input_analysis_layer, related_table)
 
     if analysis_type == "Feature Comparison":
