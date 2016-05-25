@@ -517,23 +517,23 @@
           "rings" : [
             [
               [
-                7.387556962253977,
+                7.3875569622539778,
                 2.5678199169581633
               ],
               [
-                7.387556962253977,
-                3.1983158490284738
+                7.3875569622539778,
+                3.1976265836248299
               ],
               [
-                8.0000000000000036,
-                3.1983158490284738
+                7.9993136289206443,
+                3.1976265836248299
               ],
               [
-                8.0000000000000036,
+                7.9993136289206443,
                 2.5678199169581633
               ],
               [
-                7.387556962253977,
+                7.3875569622539778,
                 2.5678199169581633
               ]
             ]
@@ -1084,11 +1084,85 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
+        "name" : "SumTableTitle",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 3.3852014481826154,
+          "y" : 2.3167871407006202
+        },
+        "lockedAspectRatio" : true,
+        "graphic" : {
+          "type" : "CIMTextGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMTextSymbol",
+              "blockProgression" : "TTB",
+              "depth3D" : 1,
+              "extrapolateBaselines" : true,
+              "fontEffects" : "Normal",
+              "fontEncoding" : "Unicode",
+              "fontFamilyName" : "Arial",
+              "fontStyleName" : "Regular",
+              "fontType" : "TTOpenType",
+              "haloSize" : 1,
+              "height" : 14,
+              "hinting" : "Default",
+              "horizontalAlignment" : "Left",
+              "kerning" : true,
+              "letterWidth" : 100,
+              "ligatures" : true,
+              "lineGapType" : "ExtraLeading",
+              "symbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        11,
+                        121.99610900878906,
+                        192,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
+              "symbol3DProperties" : {
+                "type" : "CIM3DSymbolProperties",
+                "dominantSizeAxis3D" : "Z",
+                "rotationOrder3D" : "XYZ",
+                "scaleZ" : 0,
+                "scaleY" : 0
+              },
+              "textCase" : "Normal",
+              "textDirection" : "LTR",
+              "verticalAlignment" : "Top",
+              "verticalGlyphOrientation" : "Right",
+              "wordSpacing" : 100,
+              "billboardMode3D" : "FaceNearPlane"
+            }
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "text" : "Summary Table Title",
+          "shape" : {
+            "x" : 3.3852014481826154,
+            "y" : 2.3167871407006202
+          }
+        }
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
         "name" : "EvenRowBackground",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 5.875887115614395,
-          "y" : 1.7571582192679527
+          "x" : 0.77384087932504997,
+          "y" : 1.1913308811384553
         },
         "graphic" : {
           "type" : "CIMPolygonGraphic",
@@ -1136,28 +1210,28 @@
             "rings" : [
               [
                 [
-                  5.875887115614395,
-                  1.7571582192679527,
+                  0.77384087932504997,
+                  1.1913308811384553,
                   null
                 ],
                 [
-                  7.8662144965667755,
-                  1.7571582192679527,
+                  2.7641682602774305,
+                  1.1913308811384553,
                   null
                 ],
                 [
-                  7.8662144965667755,
-                  1.4932165543300639,
+                  2.7641682602774305,
+                  0.92738921620056658,
                   null
                 ],
                 [
-                  5.875887115614395,
-                  1.4932165543300639,
+                  0.77384087932504997,
+                  0.92738921620056658,
                   null
                 ],
                 [
-                  5.875887115614395,
-                  1.7571582192679527,
+                  0.77384087932504997,
+                  1.1913308811384553,
                   null
                 ]
               ]
@@ -1171,8 +1245,8 @@
         "name" : "vertLine",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 6.9406788890092947,
-          "y" : 1.2478979925551288
+          "x" : 1.8386326527199497,
+          "y" : 0.68207065442563142
         },
         "graphic" : {
           "type" : "CIMLineGraphic",
@@ -1209,13 +1283,13 @@
             "paths" : [
               [
                 [
-                  6.9406788890092947,
-                  2.2478979925551288,
+                  1.8386326527199497,
+                  1.6820706544256314,
                   null
                 ],
                 [
-                  6.9433037464745579,
-                  1.2478979925551288,
+                  1.8412575101852129,
+                  0.68207065442563142,
                   null
                 ]
               ]
@@ -1229,8 +1303,8 @@
         "name" : "horzLine",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 5.875887115614395,
-          "y" : 2.2678411889275507
+          "x" : 0.77384087932504997,
+          "y" : 1.7020138507980533
         },
         "graphic" : {
           "type" : "CIMLineGraphic",
@@ -1267,13 +1341,13 @@
             "paths" : [
               [
                 [
-                  5.875887115614395,
-                  2.2678411889275507,
+                  0.77384087932504997,
+                  1.7020138507980533,
                   null
                 ],
                 [
-                  7.875887115614395,
-                  2.2678411889275507,
+                  2.77384087932505,
+                  1.7020138507980533,
                   null
                 ]
               ]
@@ -1287,8 +1361,8 @@
         "name" : "FieldValue",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 5.875887115614395,
-          "y" : 1.9924426844935565
+          "x" : 0.77384087932504997,
+          "y" : 1.4266153463640592
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -1350,8 +1424,8 @@
           "placement" : "Unspecified",
           "text" : "Field Value",
           "shape" : {
-            "x" : 5.875887115614395,
-            "y" : 1.9924426844935565
+            "x" : 0.77384087932504997,
+            "y" : 1.4266153463640592
           }
         }
       },
@@ -1361,8 +1435,8 @@
         "name" : "FieldName",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 5.875887115614395,
-          "y" : 2.2021866389743492
+          "x" : 0.77384087932504997,
+          "y" : 1.6363593008448536
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -1424,8 +1498,8 @@
           "placement" : "Unspecified",
           "text" : "Field Name",
           "shape" : {
-            "x" : 5.875887115614395,
-            "y" : 2.202186638974351
+            "x" : 0.77384087932504997,
+            "y" : 1.6363593008448536
           }
         }
       },

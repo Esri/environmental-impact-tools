@@ -9,7 +9,7 @@
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/be66ce7f8471a3cffa380a9c8f9c1c8b.xml",
+    "metadataURI" : "CIMPATH=Metadata/b8465a234f13dc5ffa1d52839ef8956c.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 11,
@@ -709,6 +709,80 @@
           "shape" : {
             "x" : 0.66616205078313184,
             "y" : 1.659085561951601
+          }
+        }
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
+        "name" : "SumTableTitle",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 0.70114869038885086,
+          "y" : 1.9250605219955839
+        },
+        "lockedAspectRatio" : true,
+        "graphic" : {
+          "type" : "CIMTextGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMTextSymbol",
+              "blockProgression" : "TTB",
+              "depth3D" : 1,
+              "extrapolateBaselines" : true,
+              "fontEffects" : "Normal",
+              "fontEncoding" : "Unicode",
+              "fontFamilyName" : "Arial",
+              "fontStyleName" : "Regular",
+              "fontType" : "TTOpenType",
+              "haloSize" : 1,
+              "height" : 14,
+              "hinting" : "Default",
+              "horizontalAlignment" : "Left",
+              "kerning" : true,
+              "letterWidth" : 100,
+              "ligatures" : true,
+              "lineGapType" : "ExtraLeading",
+              "symbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        11,
+                        121.99610900878906,
+                        192,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
+              "symbol3DProperties" : {
+                "type" : "CIM3DSymbolProperties",
+                "dominantSizeAxis3D" : "Z",
+                "rotationOrder3D" : "XYZ",
+                "scaleZ" : 0,
+                "scaleY" : 0
+              },
+              "textCase" : "Normal",
+              "textDirection" : "LTR",
+              "verticalAlignment" : "Top",
+              "verticalGlyphOrientation" : "Right",
+              "wordSpacing" : 100,
+              "billboardMode3D" : "FaceNearPlane"
+            }
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "text" : "Summary Table Title",
+          "shape" : {
+            "x" : 0.70114869038885086,
+            "y" : 1.9250605219955856
           }
         }
       },
