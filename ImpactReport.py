@@ -941,12 +941,16 @@ class Report:
             os.remove(pdf)
         pdf_doc.saveAndClose()
 
-    def generate_report(self, folder):
+    def generate_report(self, folder, name):
         if folder in ['', ' ', None] or not os.path.isdir(folder):
             self.path = self.aprx.homeFolder
         else:
             self.path = folder
-        self.pdf_path = os.path.join(self.path, self.report_title + ".pdf")
+        if name in ['', ' ', None, 'None']:
+            name = self.report_title
+        if not name.endswith(".pdf"):
+            name += ".pdf"
+        self.pdf_path = os.path.join(self.path, name)
         self.update_layouts()
         self.export_pdf()
         return self.pdf_path
@@ -983,6 +987,7 @@ def main():
     map_report_template = arcpy.GetParameterAsText(7)      #optional parameter for path to new pagX files
     overflow_report_template = arcpy.GetParameterAsText(8) #optional parameter for path to new pagX files
     out_folder = arcpy.GetParameterAsText(9)               #folder that will contain the final output report
+    out_name = arcpy.GetParameterAsText(10)                #required parameter for the output report name 
 
     report = None
     try:
@@ -1003,7 +1008,7 @@ def main():
             test_rows = [[str(v).replace('\n','') for v in r] for r in cur]
             report.add_table(table_title, test_rows, fields)
 
-        pdf = report.generate_report(out_folder)
+        pdf = report.generate_report(out_folder, out_name)
         os.startfile(pdf)
     except Exception as ex:
         arcpy.AddError(ex.args)
