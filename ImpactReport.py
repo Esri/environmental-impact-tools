@@ -772,13 +772,13 @@ class Report:
             has_image = not self.is_none(self.cur_elements[name].sourceImage)
         if self.is_none(v):
             if not has_image:
-                del self.key_elements[name]
+                self.key_elements.remove(name)
         else:
             self.cur_elements[name].sourceImage = v
 
     def set_cur_element_text(self, name, v):
         if self.is_none(v):
-            del self.key_elements[name]
+            self.key_elements.remove(name)
         else:
             if name in self.cur_elements:
                 self.cur_elements[name].text = v
