@@ -244,10 +244,10 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
     try:
         out_layer = output_workspace + "\\" + out_layer_name
 
-        arcpy.MakeFeatureLayer_management(analysis_layer, out_layer_name)
-        arcpy.SelectLayerByLocation_management(out_layer_name, 'intersect', select_by_layer)
+        arcpy.MakeFeatureLayer_management(analysis_layer, "basic_proximity")
+        arcpy.SelectLayerByLocation_management("basic_proximity", 'intersect', select_by_layer)
 
-        match_count = int(arcpy.GetCount_management(out_layer_name)[0])
+        match_count = int(arcpy.GetCount_management("basic_proximity")[0])
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(analysis_layer)))
@@ -261,7 +261,7 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
 
             arcpy.AddMessage(("{0} features found in {1}".format(match_count, analysis_layer)))
 
-            arcpy.CopyFeatures_management(out_layer_name, out_layer)
+            arcpy.CopyFeatures_management("basic_proximity", out_layer)
             arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
             exp = "'{}'".format(layer_type)
 
@@ -612,9 +612,9 @@ def format_outputs(output_layer, out_fields):
 
             #  Add a field to the result table to contain the selected related table field values
             for field in field_props:
-                arcpy.AddMessage("CURRENT field: {}".format(field.name))
+                # arcpy.AddMessage("CURRENT field: {}".format(field.name))
                 if field.name in related_field:
-                    arcpy.AddMessage("found a related field -- adding it to output")
+                    # arcpy.AddMessage("found a related field -- adding it to output")
                     query_related_fields.append(field.name)
                     arcpy.AddField_management(output_table, field.name, field.type,
                                               field.precision, field.scale,
@@ -634,7 +634,7 @@ def format_outputs(output_layer, out_fields):
                     if field.name != "ANALYSISTYPE" and field.name not in related_field:
                         empty_result_value.append(None)
 
-            arcpy.AddMessage("Result fields: {}".format(result_field_names))
+            # arcpy.AddMessage("Result fields: {}".format(result_field_names))
             # Prep parameters to be used during the process
             foreign_key_formatted = arcpy.AddFieldDelimiters(arcpy.Describe(related_table_full_path).path, foreign_key)
             foreign_key_type = arcpy.ListFields(related_table_full_path, foreign_key)[0].type
@@ -669,11 +669,11 @@ def format_outputs(output_layer, out_fields):
                             # Loop through the related values list and insert them into the final results table
                             for i, value in enumerate(related_values):
                                 related_value_only = list(empty_result_value)
-                                arcpy.AddMessage(related_value_only)
+                                # arcpy.AddMessage(related_value_only)
                                 if i == 0:
                                     # add a record into the result table for the 'parent' record + one or many related values
                                     origin_values.extend(value)
-                                    arcpy.AddMessage("Values list: {}".format(origin_values))
+                                    # arcpy.AddMessage("Values list: {}".format(origin_values))
                                     # arcpy.AddMessage("Origin Values: {}".format(origin_values))
                                     result_cursor.insertRow(origin_values)
                                 else:
@@ -684,7 +684,7 @@ def format_outputs(output_layer, out_fields):
                                         #                                  on the record that includes an OID field
                                         related_value_only.insert((analysis_type_index - 1), current_analysis_type)
                                     related_value_only.extend(value_list)
-                                    arcpy.AddMessage(related_value_only)
+                                    # arcpy.AddMessage(related_value_only)
                                     result_cursor.insertRow(related_value_only)
 
         return True
