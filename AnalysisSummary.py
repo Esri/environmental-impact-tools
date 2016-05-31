@@ -203,17 +203,17 @@ try:
 
     # populate the output table with information
     with arcpy.da.InsertCursor(property_table, ["ANALYSISPROP", "ANALYSISDESC"]) as prop_cursor:
-        prop_cursor.insertRow(["Analysis Shape Type", aoi_shape])
+        prop_cursor.insertRow(["AOI Shape Type", aoi_shape])
 
         # Next, insert the AOI descriptive information
         if aoi_shape == "Polygon":
             description = str(aoi_area) + " {}".format(abbreviate_units(reporting_units))
-            prop_cursor.insertRow(["Analysis Area", description])
+            prop_cursor.insertRow(["Area", description])
         elif aoi_shape == "Polyline":
             description = str(aoi_length) + " {}".format(abbreviate_units(reporting_units))
-            prop_cursor.insertRow(["Analysis Length", description])
+            prop_cursor.insertRow(["Length", description])
         else:
-            prop_cursor.insertRow(["Analysis Length", aoi_description])
+            prop_cursor.insertRow(["Count", aoi_description])
 
         # Next, insert the buffer descriptive information if one was entered
         if buffer_area != 0:

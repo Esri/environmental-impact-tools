@@ -93,7 +93,6 @@ related_table_full_path = ""
 # Function to validate script inputs
 def validate_inputs():
 
-    result = True
     reason = ""
 
     if analysis_type in ["Feature Comparison", "Basic Proximity", "Distance"]:
@@ -119,16 +118,12 @@ def validate_inputs():
         result = False
         reason += '\n {} does not exist'.format(input_analysis_layer)
 
-    if arcpy.Exists(input_aoi):
-        a = 1
-    else:
+    if not arcpy.Exists(input_aoi):
         result = False
         reason += '\n {} does not exist'.format(input_aoi)
 
     if input_buffer_layer != "#":
-        if arcpy.Exists(input_buffer_layer):
-            a = 1
-        else:
+        if not arcpy.Exists(input_buffer_layer):
             result = False
             reason += '\n {} does not exist'.format(input_buffer_layer)
 
@@ -136,7 +131,7 @@ def validate_inputs():
 
 
 # --------------------------------------
-# Basic Proximity Analysis Type
+# Get related table information
 def check_related_records(input_fc, rel_table):
     try:
         global foreign_key
@@ -209,11 +204,12 @@ def check_related_records(input_fc, rel_table):
             return input_fc
 
     except Exception as error:
-        arcpy.AddError("Check Related Records: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Check Related Records: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
-# Get key values for related records
+# Get key values for related records - currently not required
 def get_key_values(selected_layer, analysis_layer, layer_type):
     try:
         global aoi_key_values
@@ -238,7 +234,8 @@ def get_key_values(selected_layer, analysis_layer, layer_type):
             # arcpy.AddMessage("Selected Buffer primary key values: {}".format(buffer_key_values))
 
     except Exception as error:
-        arcpy.AddError("Get Key Values: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Get Key Values: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -247,10 +244,10 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
     try:
         out_layer = output_workspace + "\\" + out_layer_name
 
-        arcpy.MakeFeatureLayer_management(analysis_layer, out_layer_name)
-        arcpy.SelectLayerByLocation_management(out_layer_name, 'intersect', select_by_layer)
+        arcpy.MakeFeatureLayer_management(analysis_layer, "basic_proximity")
+        arcpy.SelectLayerByLocation_management("basic_proximity", 'intersect', select_by_layer)
 
-        match_count = int(arcpy.GetCount_management(out_layer_name)[0])
+        match_count = int(arcpy.GetCount_management("basic_proximity")[0])
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(analysis_layer)))
@@ -264,7 +261,7 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
 
             arcpy.AddMessage(("{0} features found in {1}".format(match_count, analysis_layer)))
 
-            arcpy.CopyFeatures_management(out_layer_name, out_layer)
+            arcpy.CopyFeatures_management("basic_proximity", out_layer)
             arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
             exp = "'{}'".format(layer_type)
 
@@ -273,7 +270,8 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
         return out_layer
 
     except Exception as error:
-        arcpy.AddError("Basic Proximity Error: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Basic Proximity Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -331,7 +329,8 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 
             return out_layer
     except Exception as error:
-        arcpy.AddError("Feature Comparison Error: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Feature Comparison Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -388,7 +387,8 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
             return out_layer_name
 
     except Exception as error:
-        arcpy.AddError("Distance Analysis (AOI) Error: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Distance Analysis (AOI) Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -407,11 +407,13 @@ def abbreviate_units(units):
                 'meters': 'm',
                 'meter': 'm',
                 'us-foot': 'ft',
+                'foot_us': 'ft',
                 'feet': 'ft'
                 }.get(lower_units, units)
 
     except Exception as error:
-        arcpy.AddError('Abbreviate Units Error: {}'.format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Abbreviate Units Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -461,7 +463,8 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
             return out_layer_name
 
     except Exception as error:
-        arcpy.AddError("Distance Analysis (Buffer) Error: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Distance Analysis (Buffer) Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -477,7 +480,8 @@ def get_area(input_fc, units):
         return area
 
     except Exception as error:
-        arcpy.AddError("Get Area Error: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Get Area Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -594,6 +598,7 @@ def format_outputs(output_layer, out_fields):
         # if related records need to be included -- add related values to result table
         if primary_key:
             arcpy.AddMessage("Adding related table values to result.")
+            query_related_fields = []
 
             # create a new table with same fields as the interim result
             out_path = os.path.dirname(os.path.abspath(output_table))
@@ -602,14 +607,19 @@ def format_outputs(output_layer, out_fields):
             # arcpy.AddMessage("Template table: {}".format(interim_related_result))
             arcpy.CreateTable_management(out_path, out_name, interim_related_result, None)
 
-            # Get the field properties from the related table
-            related_field_props = arcpy.ListFields(related_table_full_path, related_field)
+            # Get the field properties from the related table, must get them all
+            field_props = arcpy.ListFields(related_table_full_path)
 
-            #  Add a field to contain the selected related table field values
-            arcpy.AddField_management(output_table, related_field_props[0].name, related_field_props[0].type,
-                                      related_field_props[0].precision, related_field_props[0].scale,
-                                      related_field_props[0].length, related_field_props[0].aliasName,
-                                      "NULLABLE", "NON_REQUIRED", None)
+            #  Add a field to the result table to contain the selected related table field values
+            for field in field_props:
+                # arcpy.AddMessage("CURRENT field: {}".format(field.name))
+                if field.name in related_field:
+                    # arcpy.AddMessage("found a related field -- adding it to output")
+                    query_related_fields.append(field.name)
+                    arcpy.AddField_management(output_table, field.name, field.type,
+                                              field.precision, field.scale,
+                                              field.length, field.aliasName,
+                                              "NULLABLE", "NON_REQUIRED", None)
 
             # prep an insert cursor for the final results table
             result_fields = arcpy.ListFields(output_table)
@@ -621,7 +631,7 @@ def format_outputs(output_layer, out_fields):
                     result_field_names.append(field.name)
                     # if the current field is the analysis type field or related table field -
                     #                                   then do not add an empty value for it
-                    if field.name != "ANALYSISTYPE" and field.name != related_field:
+                    if field.name != "ANALYSISTYPE" and field.name not in related_field:
                         empty_result_value.append(None)
 
             # arcpy.AddMessage("Result fields: {}".format(result_field_names))
@@ -652,15 +662,18 @@ def format_outputs(output_layer, out_fields):
                     origin_values = list(record)
                     origin_values.pop(0)
                     # arcpy.AddMessage("Current record: {}".format(origin_values))
-                    with arcpy.da.SearchCursor(related_table_full_path, related_field, whereclause) as related_values:
-
+                    # arcpy.AddMessage("Related fields for query: {}".format(query_related_fields))
+                    with arcpy.da.SearchCursor(related_table_full_path, query_related_fields, whereclause) as related_values:
+                        # arcpy.AddMessage("result values: ".format(related_values))
                         with arcpy.da.InsertCursor(output_table, result_field_names) as result_cursor:
                             # Loop through the related values list and insert them into the final results table
                             for i, value in enumerate(related_values):
                                 related_value_only = list(empty_result_value)
+                                # arcpy.AddMessage(related_value_only)
                                 if i == 0:
-                                    # add a record into the result table for the 'parent' record + one related value
+                                    # add a record into the result table for the 'parent' record + one or many related values
                                     origin_values.extend(value)
+                                    # arcpy.AddMessage("Values list: {}".format(origin_values))
                                     # arcpy.AddMessage("Origin Values: {}".format(origin_values))
                                     result_cursor.insertRow(origin_values)
                                 else:
@@ -676,7 +689,8 @@ def format_outputs(output_layer, out_fields):
 
         return True
     except Exception as error:
-        arcpy.AddError("Format Outputs Error: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Format Outputs Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 
 # --------------------------------------
@@ -703,7 +717,8 @@ def create_empty_output(out_table, message_overwrite):
         del row
         del rows
     except Exception as error:
-        arcpy.AddError("Create Empty Output Error: {}".format(error))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        arcpy.AddError("Create Empty Output Error: Line {}: {}".format(exc_tb.tb_lineno, error))
 
 # --------------------------------------
 # Main
@@ -803,7 +818,8 @@ try:
         format_outputs(merged_output, output_fields)
 
 except Exception as err:
-    arcpy.AddError("Impact Analysis Error: {}".format(err))
+    exc_m_type, exc_m_obj, exc_m_tb = sys.exc_info()
+    arcpy.AddError("Impact Analysis Error: Line {}: {}".format(exc_m_tb.tb_lineno, error))
 
 finally:
     # Clean up temporary files
