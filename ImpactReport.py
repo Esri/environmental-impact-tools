@@ -749,7 +749,10 @@ class Report:
                 map_frame = self.cur_elements['MapFrame']
                 if len(maps) > 0:
                     user_map = maps[0]
-                    ext = user_map.defaultCamera.getExtent()
+                    if arcpy.env.extent != None:
+                        ext = arcpy.env.extent
+                    else:
+                        ext = user_map.defaultCamera.getExtent()
                     map_frame.map = user_map
                     self.drop_add_layers(map_frame)
                     map_frame.camera.setExtent(ext)            
@@ -1025,7 +1028,7 @@ def main():
     report_type = arcpy.GetParameterAsText(6)              #optional report type eg. ...
     map_report_template = arcpy.GetParameterAsText(7)      #optional parameter for path to new pagX files
     overflow_report_template = arcpy.GetParameterAsText(8) #optional parameter for path to new pagX files
-    out_report = arcpy.GetParameterAsText(9)
+    out_report = arcpy.GetParameterAsText(9)               #required parameter for the path to the new pdf 
     
     out_folder = os.path.dirname(os.path.abspath(out_report)) #folder that will contain the final output report
     out_name = os.path.basename(os.path.abspath(out_report))  #required parameter for the output report name 
