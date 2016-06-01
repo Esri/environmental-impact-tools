@@ -5,11 +5,11 @@
   "layoutDefinition" : {
     "type" : "CIMLayout",
     "name" : "ReportTemplate_OverflowPage",
-    "uRI" : "CIMPATH=layout/overflowlayout.xml",
+    "uRI" : "CIMPATH=layout/reporttemplate_overflowpage2.xml",
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/b8465a234f13dc5ffa1d52839ef8956c.xml",
+    "metadataURI" : "CIMPATH=Metadata/95af25536b86cfed6e4e50c426de7785.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 11,
@@ -1223,11 +1223,85 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
+        "name" : "TableTotals",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 0.80596791830313386,
+          "y" : 9.5599131688266628
+        },
+        "lockedAspectRatio" : true,
+        "graphic" : {
+          "type" : "CIMTextGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMTextSymbol",
+              "blockProgression" : "TTB",
+              "depth3D" : 1,
+              "extrapolateBaselines" : true,
+              "fontEffects" : "Normal",
+              "fontEncoding" : "Unicode",
+              "fontFamilyName" : "Arial",
+              "fontStyleName" : "Regular",
+              "fontType" : "TTOpenType",
+              "haloSize" : 1,
+              "height" : 11,
+              "hinting" : "Default",
+              "horizontalAlignment" : "Left",
+              "kerning" : true,
+              "letterWidth" : 100,
+              "ligatures" : true,
+              "lineGapType" : "ExtraLeading",
+              "symbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        11,
+                        121.99610900878906,
+                        192,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
+              "symbol3DProperties" : {
+                "type" : "CIM3DSymbolProperties",
+                "dominantSizeAxis3D" : "Z",
+                "rotationOrder3D" : "XYZ",
+                "scaleZ" : 0,
+                "scaleY" : 0
+              },
+              "textCase" : "Normal",
+              "textDirection" : "LTR",
+              "verticalAlignment" : "Top",
+              "verticalGlyphOrientation" : "Right",
+              "wordSpacing" : 100,
+              "billboardMode3D" : "FaceNearPlane"
+            }
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "text" : "Table Totals",
+          "shape" : {
+            "x" : 0.80596791830313386,
+            "y" : 9.5599131688266628
+          }
+        }
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
         "name" : "TableTitle",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 0.65286553288057991,
-          "y" : 9.7079105002878396
+          "x" : 0.7046141309270455,
+          "y" : 9.7472321002878388
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -1289,8 +1363,8 @@
           "placement" : "Unspecified",
           "text" : "Table Title",
           "shape" : {
-            "x" : 0.65286553288057991,
-            "y" : 9.7079105002878414
+            "x" : 0.7046141309270455,
+            "y" : 9.7472321002878406
           }
         }
       },

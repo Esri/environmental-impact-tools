@@ -78,6 +78,7 @@ class Table:
         self.table_header_background = None
         self.field_name = None
         self.field_value = None
+        self.table_totals = None
 
         self.overflow_rows = None
         self.is_overflow = False
@@ -89,6 +90,7 @@ class Table:
         self.has_buffer_rows = False
 
         self.total_row_index = None
+        self.total_row = []
 
         self.is_analysis_table = False
         self.field_names = [f.name for f in self.fields]
@@ -315,6 +317,7 @@ class Table:
             self.first_field_value = False
             self.row_background = elements['EvenRowBackground']
             self.table_title = elements['TableTitle']
+        self.table_totals = elements['TableTotals']
         self.table_header_background = elements['TableHeaderBackground']
         self.content_display = elements['ContentDisplayArea']
 
@@ -385,7 +388,7 @@ class Table:
         if num_sums > 0:           
             total_row = [''] * (len(self.fields) - (num_sums + 1))
             total_row.append(TOTAL_VALUE)
-            self.total_row_index = total_row.index(TOTAL_VALUE)
+            #self.total_row_index = total_row.index(TOTAL_VALUE)
             i = 0
             for sum in sums:
                 v = sums[sum]
@@ -393,7 +396,8 @@ class Table:
                     v = str(NUM_DIGITS.format(float(v)))
                 total_row.append(str(v))
                 i += 1
-            self.rows.append(total_row)
+            #self.rows.append(total_row)
+            self.total_row = total_row
             
     def init_table(self, elements, remaining_height, layout_type, key_elements):
         #locate placeholder elements
@@ -457,7 +461,8 @@ class Report:
                                     'ReportSubTitle', 'ReportTitle', 'ScaleBarM', 'ScaleBarKM',
                                     'Logo', 'PageNumber', 'ReportTitleFooter', 'MapFrame', 
                                     'SumTableHorzLine', 'SumTableVertLine', 'SumTableFieldValue', 
-                                    'SumTableFieldName', 'SumTableRowBackground', 'SumTableFirstColumn', 'SumTableTitle']
+                                    'SumTableFieldName', 'SumTableRowBackground', 'SumTableFirstColumn', 
+                                    'SumTableTitle', 'TableTotals']
 
         #Required and Optional overflow element names
         # Optional names are indicated explictly in optional_element_names
@@ -468,14 +473,14 @@ class Report:
                                         'Logo', 'PageNumber', 'ReportTitleFooter', 'SumTableFirstColumn', 
                                         'SumTableHorzLine', 'SumTableVertLine', 'SumTableFieldValue', 
                                         'SumTableFieldName', 'SumTableRowBackground','SumTableTitle', 
-                                        'ReportType', 'ReportSubTitle']
+                                        'ReportType', 'ReportSubTitle', 'TableTotals']
         
         #Optional element names
         # Execution of the tool will continue as expected if these elements are not found in the layout
         self.optional_element_names = ['Logo', 'SumTableHorzLine', 'SumTableVertLine', 
                                        'SumTableFieldValue', 'SumTableFieldName', 'SumTableRowBackground', 
                                        'SumTableFirstColumn', 'SumTableTitle', 'ReportType', 
-                                       'ReportSubTitle', 'ReportTitle', 'ReportTitleFooter']
+                                       'ReportSubTitle', 'ReportTitle', 'ReportTitleFooter', 'TableTotals']
 
         #This list is updated as the script exectues
         #In most cases we clone a given element and work with that...however, for these we interact directly with the element
@@ -622,6 +627,7 @@ class Report:
                 overflow_table.key_elements = table.key_elements
                 overflow_table.first_field_value = table.first_field_value
                 overflow_table.first_overflow = first_overflow
+                overflow_table.total_row = table.total_row
                 #overflow_table.field_names = table.field_names
                 if hasattr(table, 'p_fields'):
                     if len(table.p_fields) > 0:
@@ -809,6 +815,8 @@ class Report:
             full_vert = []
             line.elementHeight = table.table_height
             collection = table.field_widths
+            if len(table.total_row) > 0:
+
             if not table.total_row_index == None:
                 f = table.total_row_index
                 while f < len(collection):
