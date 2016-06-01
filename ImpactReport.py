@@ -910,7 +910,46 @@ class Report:
             unique = str(x) if len(self.pdfs) > 1 else ''
             unique += self.time_stamp
             pdf_path = os.path.join(self.path, pdf['title'] + unique + ".pdf")
+            
             pdf['layout'].exportToPDF(pdf_path)
+
+            #default is 300
+            #resolution = 300
+            
+            ##default is best
+            #image_quality_choices = ['BEST', 'BETTER', 'NORMAL', 'FASTER', 'FASTEST']
+            #image_quality = image_quality_choices[0]
+            
+            ##default is true
+            #compress_vector_graphics = True
+
+            ##default is ADAPTIVE
+            #image_compression_choices = ['ADAPTIVE', 'DEFLATE', 'JPEG', 'LZW', 'NONE', 'RLE']
+            #image_compression = image_compression_choices[0]
+
+            ##default is true
+            #embed_fonts = True
+
+            ##default is LAYERS_ONLY
+            #layers_attributes_choices = ['LAYERS_ONLY', 'LAYERS_AND_ATTRIBUTES', 'NONE']
+            #layers_attributes = layers_attributes_choices[0]
+
+            ##default is True
+            #georef_info = True
+
+            ##default is 80
+            ##A number that controls compression quality value when image_compression is set to ADAPTIVE or JPEG. 
+            ##The valid range is 1 to 100. 
+            ##A jpeg_compression_quality of 100 provides the best-quality images but creates large export files. 
+            ##The recommended range is between 70 and 90.
+            #jpeg_compression_quality = 80
+
+            ##default is false
+            #clip_to_elements = False
+            
+            #pdf['layout'].exportToPDF(pdf_path, resolution, image_quality, compress_vector_graphics, 
+            #                          image_compression, embed_fonts, layers_attributes, georef_info, 
+            #                          jpeg_compression_quality, clip_to_elements)
             self.pdf_paths.append(pdf_path)
             x += 1     
         self.append_pages()
@@ -986,8 +1025,10 @@ def main():
     report_type = arcpy.GetParameterAsText(6)              #optional report type eg. ...
     map_report_template = arcpy.GetParameterAsText(7)      #optional parameter for path to new pagX files
     overflow_report_template = arcpy.GetParameterAsText(8) #optional parameter for path to new pagX files
-    out_folder = arcpy.GetParameterAsText(9)               #folder that will contain the final output report
-    out_name = arcpy.GetParameterAsText(10)                #required parameter for the output report name 
+    out_report = arcpy.GetParameterAsText(9)
+    
+    out_folder = os.path.dirname(os.path.abspath(out_report)) #folder that will contain the final output report
+    out_name = os.path.basename(os.path.abspath(out_report))  #required parameter for the output report name 
 
     report = None
     try:
