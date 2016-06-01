@@ -82,6 +82,7 @@ class Table:
         self.overflow_rows = None
         self.is_overflow = False
         self.full_overflow = False
+        self.first_overflow = False
         self.remaining_height = None
         
         self.buffer_rows = None
@@ -97,7 +98,7 @@ class Table:
     def calc_widths(self):
         self.auto_adjust = []
         self.field_name_lengths = []
-        
+        self.field_widths = []
         for f in self.fields:
             self.field_name.text = f.aliasName
             w = self.field_name.elementWidth + (X_MARGIN * 3)
@@ -407,7 +408,9 @@ class Table:
             self.calc_totals()
 
         #Calculate the column/row widths and the row/table heights
-        if len(self.field_widths) == 0:
+        if len(self.field_widths) == 0 or self.first_overflow:
+            if self.first_overflow:
+                self.rows = [[str(v).replace('\n','') for v in r] for r in self.rows]
             self.calc_widths()
         overflow = self.calc_heights()
         #self.row_heights = [math.ceil(x*100)/100 for x in self.row_heights]
@@ -443,7 +446,6 @@ class Report:
         self.page_num = 0
     
         self.aprx = arcpy.mp.ArcGISProject('CURRENT')
-
         self.temp_dir = self.aprx.homeFolder
 
         #Required and Optional map element names
@@ -619,6 +621,7 @@ class Report:
                 overflow_table.is_analysis_table =  table.is_analysis_table
                 overflow_table.key_elements = table.key_elements
                 overflow_table.first_field_value = table.first_field_value
+                overflow_table.first_overflow = first_overflow
                 #overflow_table.field_names = table.field_names
                 if hasattr(table, 'p_fields'):
                     if len(table.p_fields) > 0:
@@ -749,7 +752,10 @@ class Report:
                 map_frame = self.cur_elements['MapFrame']
                 if len(maps) > 0:
                     user_map = maps[0]
-                    ext = user_map.defaultCamera.getExtent()
+                    if arcpy.env.extent != None:
+                        ext = arcpy.env.extent
+                    else:
+                        ext = user_map.defaultCamera.getExtent()
                     map_frame.map = user_map
                     self.drop_add_layers(map_frame)
                     map_frame.camera.setExtent(ext)            
@@ -1012,6 +1018,15 @@ def is_float(value):
     return True
   except ValueError:
     return False
+
+def trace():
+    import traceback
+    import sys
+    tb = sys.exc_info()[2]
+    tbinfo = traceback.format_tb(tb)[0]
+    line = tbinfo.split(", ")[1]
+    synerror = traceback.format_exc().splitlines()[-1]
+    return line, __file__, synerror
     
 def main():
     arcpy.env.overwriteOutput = True
@@ -1025,7 +1040,7 @@ def main():
     report_type = arcpy.GetParameterAsText(6)              #optional report type eg. ...
     map_report_template = arcpy.GetParameterAsText(7)      #optional parameter for path to new pagX files
     overflow_report_template = arcpy.GetParameterAsText(8) #optional parameter for path to new pagX files
-    out_report = arcpy.GetParameterAsText(9)
+    out_report = arcpy.GetParameterAsText(9)               #required parameter for the path to the new pdf 
     
     out_folder = os.path.dirname(os.path.abspath(out_report)) #folder that will contain the final output report
     out_name = os.path.basename(os.path.abspath(out_report))  #required parameter for the output report name 
@@ -1051,8 +1066,17 @@ def main():
 
         pdf = report.generate_report(out_folder, out_name)
         os.startfile(pdf)
-    except Exception as ex:
-        arcpy.AddError(ex.args)
+    except arcpy.ExecuteError:
+        line, filename, synerror = trace()
+        arcpy.AddError("error on line: %s" % line)
+        arcpy.AddError("error in file name: %s" % filename)
+        arcpy.AddError("with error message: %s" % synerror)
+        arcpy.AddError("ArcPy Error Message: %s" % arcpy.GetMessages(2))
+    except:
+        line, filename, synerror = trace()
+        arcpy.AddError("error on line: %s" % line)
+        arcpy.AddError("error in file name: %s" % filename)
+        arcpy.AddError("with error message: %s" % synerror)
     finally:
         if report != None:
             for pdf in report.pdf_paths:
