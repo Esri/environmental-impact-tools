@@ -9,7 +9,7 @@
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/95af25536b86cfed6e4e50c426de7785.xml",
+    "metadataURI" : "CIMPATH=Metadata/7a6e044f1f815217ba34ba428871bb9f.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 11,
@@ -1245,7 +1245,7 @@
               "fontStyleName" : "Regular",
               "fontType" : "TTOpenType",
               "haloSize" : 1,
-              "height" : 11,
+              "height" : 10,
               "hinting" : "Default",
               "horizontalAlignment" : "Left",
               "kerning" : true,
