@@ -267,6 +267,8 @@ class Table:
             self.remaining_height = self.content_display.elementHeight
         if not self.is_overflow:
             self.remaining_height -= (self.table_header_background.elementHeight + Y_MARGIN)
+            if len(self.total_row) > 0:
+                self.remaining_height -= self.table_totals.elementHeight + (Y_MARGIN * 2)
         if table_height > self.remaining_height:
             num_rows = 0
             if self.remaining_height > 0:
@@ -386,17 +388,15 @@ class Table:
                 first_row = False
         num_sums = len(sums)
         if num_sums > 0:           
-            total_row = [''] * (len(self.fields) - (num_sums + 1))
-            total_row.append(TOTAL_VALUE)
-            #self.total_row_index = total_row.index(TOTAL_VALUE)
+            total_row = [' ']
             i = 0
             for sum in sums:
                 v = sums[sum]
                 if not percent_idx == None and i == percent_idx:
                     v = str(NUM_DIGITS.format(float(v)))
+                total_row.append(self.fields[sum_indexes[i]].aliasName + ": ")
                 total_row.append(str(v))
                 i += 1
-            #self.rows.append(total_row)
             self.total_row = total_row
             
     def init_table(self, elements, remaining_height, layout_type, key_elements):
@@ -612,26 +612,7 @@ class Report:
             x += 1
             if overflow:
                 overflow_table = Table(table.title, table.overflow_rows, table.fields)
-                overflow_table.is_overflow = True
-                overflow_table.full_overflow = table.full_overflow
-                overflow_table.field_widths = table.field_widths
-                overflow_table.auto_adjust = table.auto_adjust
-                overflow_table.row_width = table.row_width
-                overflow_table.max_vals = table.max_vals
-                overflow_table.total_row_index = table.total_row_index
-                overflow_table.has_buffer_rows = table.has_buffer_rows
-                overflow_table.buffer_rows = table.buffer_rows
-                overflow_table.adjust_header_columns = table.adjust_header_columns
-                overflow_table.field_name_lengths = table.field_name_lengths
-                overflow_table.is_analysis_table =  table.is_analysis_table
-                overflow_table.key_elements = table.key_elements
-                overflow_table.first_field_value = table.first_field_value
-                overflow_table.first_overflow = first_overflow
-                overflow_table.total_row = table.total_row
-                #overflow_table.field_names = table.field_names
-                if hasattr(table, 'p_fields'):
-                    if len(table.p_fields) > 0:
-                        overflow_table.p_fields = table.p_fields
+                overflow_table = self.update_overflow_table(table, overflow_table, first_overflow)
                 table.total_row_index = None
                 self.tables.insert(x, overflow_table)
             else:
@@ -646,19 +627,17 @@ class Report:
 
             if table.row_count > 0:
                 table_header_background = table.table_header_background
-                if self.base_y == None:
-                    if table.is_overflow:
-                        height = self.place_holder.elementHeight
-                    else:
-                        height = self.place_holder.elementHeight - table_header_background.elementHeight
-                else:
-                    height = self.remaining_height - table_header_background.elementHeight
-
                 if not table.is_overflow:
                     table_header_background = table.table_header_background.clone('table_header_background_clone')
                     table_title = table.table_title.clone('table_title_clone')
                     table_title.text = table.title
-                    f = (table_header_background.elementHeight - table_title.elementHeight) / 2
+                    diff = table_header_background.elementHeight - table_title.elementHeight
+                    if len(table.total_row) > 0:
+                        table_totals = table.table_totals.clone('table_totals_clone')
+                        v = (table_totals.elementHeight + Y_MARGIN)
+                        table_header_background.elementHeight += v
+                        table_totals.text = " ".join(table.total_row)
+                    f = diff / 2
                     if self.base_y == None:
                         table_header_background.elementPositionX = self.base_x
                         table_header_background.elementPositionY = self.cur_y
@@ -673,8 +652,10 @@ class Report:
                         table_title.elementPositionY = self.base_y - f
                         self.cur_y = self.base_y
                         self.cur_x = self.base_x
-
                     self.cur_y -= (table_header_background.elementHeight + Y_MARGIN)
+                    if len(table.total_row) > 0:
+                        table_totals.elementPositionX = self.base_x
+                        table_totals.elementPositionY = table_title.elementPositionY - table_title.elementHeight - Y_MARGIN
                 start_y = self.cur_y 
 
                 arcpy.AddMessage("Generating Table: " + table.title)  
@@ -699,6 +680,28 @@ class Report:
                 self.cur_y = start_y
                 self.add_values(table)
         self.delete_elements()
+
+    def update_overflow_table(self, table, overflow_table, first_overflow):
+        overflow_table.is_overflow = True
+        overflow_table.full_overflow = table.full_overflow
+        overflow_table.field_widths = table.field_widths
+        overflow_table.auto_adjust = table.auto_adjust
+        overflow_table.row_width = table.row_width
+        overflow_table.max_vals = table.max_vals
+        overflow_table.total_row_index = table.total_row_index
+        overflow_table.has_buffer_rows = table.has_buffer_rows
+        overflow_table.buffer_rows = table.buffer_rows
+        overflow_table.adjust_header_columns = table.adjust_header_columns
+        overflow_table.field_name_lengths = table.field_name_lengths
+        overflow_table.is_analysis_table =  table.is_analysis_table
+        overflow_table.key_elements = table.key_elements
+        overflow_table.first_field_value = table.first_field_value
+        overflow_table.first_overflow = first_overflow
+        overflow_table.total_row = table.total_row
+        if hasattr(table, 'p_fields'):
+            if len(table.p_fields) > 0:
+                overflow_table.p_fields = table.p_fields
+        return overflow_table
 
     def drop_add_layers(self, map_frame):
         print('No Legend')
@@ -814,14 +817,7 @@ class Report:
         if vert:
             full_vert = []
             line.elementHeight = table.table_height
-            collection = table.field_widths
-            if len(table.total_row) > 0:
-
-            if not table.total_row_index == None:
-                f = table.total_row_index
-                while f < len(collection):
-                    f += 1
-                    full_vert.append(f)                
+            collection = table.field_widths           
         else:
             line.elementWidth = table.row_width
             collection = table.row_heights
