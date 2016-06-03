@@ -5,7 +5,7 @@
   "layoutDefinition" : {
     "type" : "CIMLayout",
     "name" : "Map Template with Legend",
-    "uRI" : "CIMPATH=reporttemplate_mappage1/maplayout1.xml",
+    "uRI" : "CIMPATH=layout/map_template_with_legend.xml",
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
@@ -1597,11 +1597,85 @@
       {
         "type" : "CIMGraphicElement",
         "anchor" : "TopLeftCorner",
+        "name" : "TableTotals",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 0.70103470055257788,
+          "y" : 1.9154875361833907
+        },
+        "lockedAspectRatio" : true,
+        "graphic" : {
+          "type" : "CIMTextGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMTextSymbol",
+              "blockProgression" : "TTB",
+              "depth3D" : 1,
+              "extrapolateBaselines" : true,
+              "fontEffects" : "Normal",
+              "fontEncoding" : "Unicode",
+              "fontFamilyName" : "Arial",
+              "fontStyleName" : "Regular",
+              "fontType" : "TTOpenType",
+              "haloSize" : 1,
+              "height" : 10,
+              "hinting" : "Default",
+              "horizontalAlignment" : "Left",
+              "kerning" : true,
+              "letterWidth" : 100,
+              "ligatures" : true,
+              "lineGapType" : "ExtraLeading",
+              "symbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        11,
+                        121.99610900878906,
+                        192,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
+              "symbol3DProperties" : {
+                "type" : "CIM3DSymbolProperties",
+                "dominantSizeAxis3D" : "Z",
+                "rotationOrder3D" : "XYZ",
+                "scaleZ" : 0,
+                "scaleY" : 0
+              },
+              "textCase" : "Normal",
+              "textDirection" : "LTR",
+              "verticalAlignment" : "Top",
+              "verticalGlyphOrientation" : "Right",
+              "wordSpacing" : 100,
+              "billboardMode3D" : "FaceNearPlane"
+            }
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "text" : "Table Totals",
+          "shape" : {
+            "x" : 0.70103470055257788,
+            "y" : 1.9154875361833916
+          }
+        }
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
         "name" : "TableTitle",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 0.66616205078313184,
-          "y" : 2.0234756706046673
+          "x" : 0.68626148777323071,
+          "y" : 2.1225288078290601
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -1663,8 +1737,8 @@
           "placement" : "Unspecified",
           "text" : "Table Title",
           "shape" : {
-            "x" : 0.66616205078313184,
-            "y" : 2.0234756706046673
+            "x" : 0.68626148777323071,
+            "y" : 2.1225288078290601
           }
         }
       },

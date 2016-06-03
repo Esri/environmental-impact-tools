@@ -9,7 +9,7 @@
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/5c6a199e8b56eaaf78859ec10e3b4326.xml",
+    "metadataURI" : "CIMPATH=Metadata/4afcc882406a7dd4e4ad386c4b5b5d99.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 11,
@@ -1595,8 +1595,8 @@
         "name" : "TableTotals",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 0.73058656022313162,
-          "y" : 1.9773795121163402
+          "x" : 0.69394696154326407,
+          "y" : 1.9512083702021483
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -1614,7 +1614,7 @@
               "fontStyleName" : "Regular",
               "fontType" : "TTOpenType",
               "haloSize" : 1,
-              "height" : 11,
+              "height" : 10,
               "hinting" : "Default",
               "horizontalAlignment" : "Left",
               "kerning" : true,
@@ -1658,8 +1658,8 @@
           "placement" : "Unspecified",
           "text" : "Table Totals",
           "shape" : {
-            "x" : 0.73058656022313162,
-            "y" : 1.9773795121163404
+            "x" : 0.69394696154326407,
+            "y" : 1.9512083702021485
           }
         }
       },

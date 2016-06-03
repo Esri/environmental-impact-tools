@@ -9,7 +9,7 @@
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/3d4c23f5b8e95dc5fddef2d0928e2143.xml",
+    "metadataURI" : "CIMPATH=Metadata/962ade66c9f08cf573a17dbef320c6eb.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 8.5,
@@ -35,11 +35,6 @@
         },
         {
           "type" : "CIMGuide",
-          "position" : 10.75,
-          "orientation" : "Vertical"
-        },
-        {
-          "type" : "CIMGuide",
           "position" : 4.25,
           "orientation" : "Horizontal"
         },
@@ -52,6 +47,11 @@
           "type" : "CIMGuide",
           "position" : 8,
           "orientation" : "Horizontal"
+        },
+        {
+          "type" : "CIMGuide",
+          "position" : 10.5,
+          "orientation" : "Vertical"
         }
       ],
       "showRulers" : true,
@@ -128,12 +128,12 @@
                   null
                 ],
                 [
-                  10.749999999999993,
+                  10.499999999999996,
                   8,
                   null
                 ],
                 [
-                  10.749999999999993,
+                  10.499999999999996,
                   7.5614324666810813,
                   null
                 ],
@@ -201,7 +201,7 @@
                   null
                 ],
                 [
-                  10.750000000000002,
+                  10.500000000000002,
                   0.68000000000000005,
                   null
                 ]
@@ -1221,8 +1221,8 @@
         "name" : "TableTotals",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 0.80086968405092562,
-          "y" : 6.447995787008475
+          "x" : 0.80086968405092573,
+          "y" : 6.4479957870084741
         },
         "lockedAspectRatio" : true,
         "graphic" : {
@@ -1240,7 +1240,7 @@
               "fontStyleName" : "Regular",
               "fontType" : "TTOpenType",
               "haloSize" : 1,
-              "height" : 11,
+              "height" : 10,
               "hinting" : "Default",
               "horizontalAlignment" : "Left",
               "kerning" : true,
@@ -1412,12 +1412,12 @@
                   null
                 ],
                 [
-                  10.750000000000007,
+                  10.499999999999998,
                   7.3629925053533256,
                   null
                 ],
                 [
-                  10.750000000000007,
+                  10.499999999999998,
                   0.75000000000000178,
                   null
                 ],
@@ -1610,7 +1610,7 @@
         "name" : "ReportTitleFooter",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 10.750000000000002,
+          "x" : 10.503724211549491,
           "y" : 0.50196789414414411
         },
         "lockedAspectRatio" : true,
@@ -1673,7 +1673,7 @@
           "placement" : "Unspecified",
           "text" : "Report Title",
           "shape" : {
-            "x" : 10.750000000000004,
+            "x" : 10.503724211549493,
             "y" : 0.50196789414414411
           }
         }
