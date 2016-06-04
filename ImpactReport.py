@@ -17,12 +17,12 @@
  """
 
 import arcpy
-import os, sys, json, datetime, textwrap, math
+import os, sys, json, datetime, textwrap, math, re
 
 ANALYSIS_PROP_FIELD = 'ANALYSISPROP'
 ANALYSIS_DESC_FIELD = 'ANALYSISDESC'
 
-TOTAL_VALUE = 'TOTAL: '
+CONTINUED_VALUE = "(continued)"
 
 SPLIT_FIELD = 'ANALYSISTYPE'
 
@@ -39,11 +39,13 @@ SPLIT_VAL_BUFFER = 'Buffer'
 SPLIT_VAL_AOI = 'AOI'
 
 BUFFER_TITLE = ' (within buffer)'
+BUFFER_TITLE_TOTAL = ' of buffer'
+AOI_TITLE_TOTAL = ' of AOI'
 
 Y_MARGIN = .025
 X_MARGIN = .06
 
-NUM_DIGITS = '{0:.2f}'
+NUM_DIGITS_2 = '{0:.2f}'
 
 class MockField:
     def __init__(self, name, alias, type):
@@ -84,10 +86,12 @@ class Table:
         self.is_overflow = False
         self.full_overflow = False
         self.first_overflow = False
+        self.not_continued = True
         self.remaining_height = None
         
         self.buffer_rows = None
         self.has_buffer_rows = False
+        self.is_buffer_rows = False
 
         self.total_row_index = None
         self.total_row = []
@@ -115,7 +119,8 @@ class Table:
             elm = self.field_value 
             if self.first_field_value and x == 0 and ANALYSIS_PROP_FIELD in self.field_names:
                 elm = self.first_field_value
-            elm.text = v if not is_float(v) else NUM_DIGITS.format(float(v))
+            tt = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
+            elm.text = self.test_trim(tt)
             potential_length = elm.elementWidth + (X_MARGIN * 3)
             if potential_length > length:
                 self.field_widths[x] = potential_length
@@ -124,23 +129,59 @@ class Table:
         self.row_width = sum(self.field_widths)
 
         if self.row_width > self.content_display.elementWidth:
-            self.auto_adjust = self.adjust_row_widths()        
+            self.auto_adjust = self.adjust_row_widths()  
+            
+    def test_trim(self, v):
+        if len(v) > 0:
+            if v[-1] in [0, '0']:
+                v = v[:-1]
+        return v
 
     def get_max_vals(self, rows):
         vals = []
         indexes = []
         fr = True
+        all_lower = {}
         for r in rows:
             x = 0
             for v in r:
                 if fr:
+                    all_lower[x] = [v.islower()]
                     vals.append(v)
                     if x + 1 == len(r):
                         fr = False                    
                 else:
+                    if all_lower[x][0] and v not in [None, 'None', '', ' ']:               
+                        if not v.islower():
+                            cap = int(len(v) * .4)
+                            num_upper = len(''.join(re.findall('[A-Z]+',v)))
+                            if num_upper > cap:
+                                all_lower[x][0] = v.islower()
+                            if len(all_lower[x]) > 1:
+                                if all_lower[x][1] < num_upper:
+                                    all_lower[x][1] = num_upper
+                            else:
+                                all_lower[x].append(num_upper)
                     if len(v) > len(vals[x]):
-                        vals[x] = v
-                x += 1  
+                        vals[x] = v  
+                x += 1
+        x = 0
+        for al in all_lower:
+            if not all_lower[al][0]:
+                vals[x] = vals[x].upper()
+            else:
+                if len(all_lower[al]) > 1:
+                    num_upper = all_lower[x][1]
+                    s = ''
+                    xxx = 0
+                    for c in vals[x]:
+                        if c.isalpha() and xxx <= num_upper:
+                            s += c.upper()
+                        else:
+                            s += c
+                        xxx += 1
+                    vals[x] = s
+            x += 1
         return vals
 
     def adjust_row_widths(self):
@@ -230,7 +271,8 @@ class Table:
                 for row in self.rows:
                     v = str(row[column_index])
                     if len(v) > max_chars:
-                        v = v if not is_float(v) else NUM_DIGITS.format(float(v))
+                        v = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
+                        v = self.test_trim(v)
                         wrapped_val = textwrap.wrap(v, max_chars)
                         wrapped_height = (len(wrapped_val) * (self.row_height - Y_MARGIN))
                         if wrapped_height > row_heights[x]:
@@ -241,34 +283,32 @@ class Table:
             table_height = self.row_count * self.row_height
             row_heights = [self.row_height] * len(self.rows)
 
-        if not self.is_overflow:
-            header_height = self.header_height
-            if len(adjust_header_columns_list) > 0:
-                field_names = [f.aliasName for f in self.fields]
-                for ac in adjust_header_columns_list:
-                    field_name = field_names[ac]
-                    column_index = 1
-                    if field_name == field_names[0]:
-                        column_index = 0
-                    col_width = self.field_widths[ac]
-                    fit_width = col_width - (X_MARGIN * 3)
-                    max_chars = self.calc_num_chars(fit_width, field_name, column_index)
-                    wrapped_val = textwrap.wrap(field_name, max_chars)
-                    wrapped_height = (len(wrapped_val) * (self.header_height - Y_MARGIN))
-                    if wrapped_height > header_height:
-                        header_height = wrapped_height
-                    if wrapped_height > self.header_height:
-                        self.adjust_header_columns[ac] = '\n'.join(wrapped_val)
-            row_heights.insert(0, header_height)  
+        header_height = self.header_height
+        if len(adjust_header_columns_list) > 0:
+            field_names = [f.aliasName for f in self.fields]
+            for ac in adjust_header_columns_list:
+                field_name = field_names[ac]
+                column_index = 1
+                if field_name == field_names[0]:
+                    column_index = 0
+                col_width = self.field_widths[ac]
+                fit_width = col_width - (X_MARGIN * 3)
+                max_chars = self.calc_num_chars(fit_width, field_name, column_index)
+                wrapped_val = textwrap.wrap(field_name, max_chars)
+                wrapped_height = (len(wrapped_val) * (self.header_height - Y_MARGIN))
+                if wrapped_height > header_height:
+                    header_height = wrapped_height
+                if wrapped_height > self.header_height:
+                    self.adjust_header_columns[ac] = '\n'.join(wrapped_val)
+        row_heights.insert(0, header_height)  
         table_height = sum(row_heights)
         self.row_heights = row_heights
 
         if self.remaining_height == None:
             self.remaining_height = self.content_display.elementHeight
-        if not self.is_overflow:
-            self.remaining_height -= (self.table_header_background.elementHeight + Y_MARGIN)
-            if len(self.total_row) > 0:
-                self.remaining_height -= self.table_totals.elementHeight + (Y_MARGIN * 2)
+        self.remaining_height -= (self.table_header_background.elementHeight + Y_MARGIN)
+        if len(self.total_row) > 0:
+            self.remaining_height -= self.table_totals.elementHeight + (Y_MARGIN * 2)
         if table_height > self.remaining_height:
             num_rows = 0
             if self.remaining_height > 0:
@@ -290,12 +330,8 @@ class Table:
                 self.rows = []
                 self.row_count = len(self.rows)
             else:
-                if self.is_overflow:
-                    self.overflow_rows = self.rows[num_rows:]
-                    self.rows = self.rows[:num_rows]
-                else:
-                    self.overflow_rows = self.rows[num_rows - 1:]
-                    self.rows = self.rows[:num_rows - 1]
+                self.overflow_rows = self.rows[num_rows - 1:]
+                self.rows = self.rows[:num_rows - 1]
                 self.row_count = len(self.rows)
                 self.remaining_height -= self.table_height
                 self.row_heights = self.row_heights[:num_rows]
@@ -382,7 +418,7 @@ class Table:
                         else:
                             sums[i] += new_v
                         if is_float(new_v):
-                            r[i] = str(NUM_DIGITS.format(new_v))
+                            r[i] = self.test_trim(str(NUM_DIGITS_2.format(new_v)))
                     else:
                         r[i] = ''
                 first_row = False
@@ -392,11 +428,21 @@ class Table:
             i = 0
             for sum in sums:
                 v = sums[sum]
+                a = ''
                 if not percent_idx == None and i == percent_idx:
-                    v = str(NUM_DIGITS.format(float(v)))
-                total_row.append(self.fields[sum_indexes[i]].aliasName + ": ")
-                total_row.append(str(v))
+                    v = self.test_trim(str(NUM_DIGITS_2.format(float(v))))
+                    v += '%'
+                    if self.is_buffer_rows:
+                        a += BUFFER_TITLE_TOTAL
+                    else:
+                        a += AOI_TITLE_TOTAL
+                else:
+                    v = str(NUM_DIGITS_2.format(float(v))) if is_float(v) else str(v)
+                    v = self.test_trim(v)
+                    total_row.append(self.fields[sum_indexes[i]].aliasName + ": ")
+                total_row.append(str(v) + a + ',')
                 i += 1
+            total_row[-1] = total_row[-1][:-1]
             self.total_row = total_row
             
     def init_table(self, elements, remaining_height, layout_type, key_elements):
@@ -610,9 +656,13 @@ class Report:
                     table.is_overflow = False
             overflow = table.init_table(self.cur_elements, self.remaining_height, self.layout_type, self.key_elements)
             x += 1
-            if overflow:
+            if overflow:             
                 overflow_table = Table(table.title, table.overflow_rows, table.fields)
                 overflow_table = self.update_overflow_table(table, overflow_table, first_overflow)
+                if len(table.rows) == 0:
+                    overflow_table.not_continued = True
+                else:
+                    overflow_table.not_continued = False
                 table.total_row_index = None
                 self.tables.insert(x, overflow_table)
             else:
@@ -623,39 +673,40 @@ class Report:
                             fields = table.p_fields
                     buffer_rows_table = Table(table.title + BUFFER_TITLE, table.buffer_rows, fields)
                     buffer_rows_table.adjust_header_columns = table.adjust_header_columns
+                    buffer_rows_table.is_buffer_rows = True
                     self.tables.insert(x, buffer_rows_table)
 
             if table.row_count > 0:
                 table_header_background = table.table_header_background
-                if not table.is_overflow:
-                    table_header_background = table.table_header_background.clone('table_header_background_clone')
-                    table_title = table.table_title.clone('table_title_clone')
-                    table_title.text = table.title
-                    diff = table_header_background.elementHeight - table_title.elementHeight
-                    if len(table.total_row) > 0:
-                        table_totals = table.table_totals.clone('table_totals_clone')
-                        v = (table_totals.elementHeight + Y_MARGIN)
-                        table_header_background.elementHeight += v
-                        table_totals.text = " ".join(table.total_row)
-                    f = diff / 2
-                    if self.base_y == None:
-                        table_header_background.elementPositionX = self.base_x
-                        table_header_background.elementPositionY = self.cur_y
+                #if not table.is_overflow:
+                table_header_background = table.table_header_background.clone('table_header_background_clone')
+                table_title = table.table_title.clone('table_title_clone')
+                table_title.text = table.title if not table.is_overflow and table.not_continued else table.title + " " + CONTINUED_VALUE
+                diff = table_header_background.elementHeight - table_title.elementHeight
+                if len(table.total_row) > 0 and not table.is_overflow and table.not_continued:
+                    table_totals = table.table_totals.clone('table_totals_clone')
+                    v = (table_totals.elementHeight + (Y_MARGIN * 2))
+                    table_header_background.elementHeight += v
+                    table_totals.text = " ".join(table.total_row)
+                f = diff / 2
+                if self.base_y == None:
+                    table_header_background.elementPositionX = self.base_x
+                    table_header_background.elementPositionY = self.cur_y
       
-                        table_title.elementPositionX = self.base_x
-                        table_title.elementPositionY = self.cur_y - f
-                    else:                  
-                        table_header_background.elementPositionX = self.base_x
-                        table_header_background.elementPositionY = self.base_y
+                    table_title.elementPositionX = self.base_x
+                    table_title.elementPositionY = self.cur_y - f
+                else:                  
+                    table_header_background.elementPositionX = self.base_x
+                    table_header_background.elementPositionY = self.base_y
 
-                        table_title.elementPositionX = self.base_x
-                        table_title.elementPositionY = self.base_y - f
-                        self.cur_y = self.base_y
-                        self.cur_x = self.base_x
-                    self.cur_y -= (table_header_background.elementHeight + Y_MARGIN)
-                    if len(table.total_row) > 0:
-                        table_totals.elementPositionX = self.base_x
-                        table_totals.elementPositionY = table_title.elementPositionY - table_title.elementHeight - Y_MARGIN
+                    table_title.elementPositionX = self.base_x
+                    table_title.elementPositionY = self.base_y - f
+                    self.cur_y = self.base_y
+                    self.cur_x = self.base_x
+                self.cur_y -= (table_header_background.elementHeight + Y_MARGIN)
+                if len(table.total_row) > 0 and not table.is_overflow and table.not_continued:
+                    table_totals.elementPositionX = self.base_x
+                    table_totals.elementPositionY = table_title.elementPositionY - table_title.elementHeight - (Y_MARGIN * 2)
                 start_y = self.cur_y 
 
                 arcpy.AddMessage("Generating Table: " + table.title)  
@@ -674,7 +725,6 @@ class Report:
                 eh = self.place_holder.elementHeight
                 esy = self.place_holder.elementPositionY
                 self.remaining_height = eh - (esy - self.base_y)
-
                 #first reset the x/y
                 self.cur_x = self.place_holder.elementPositionX
                 self.cur_y = start_y
@@ -854,20 +904,21 @@ class Report:
                 date_fields.append(x)
             if f.name == PERCENT_FIELD:
                 percent_fields.append(x)
-            if not table.is_overflow:
-                elm = field_name.clone("header_clone")
-                v = f.aliasName
-                if x in table.adjust_header_columns:
-                    v = table.adjust_header_columns[x]
-                elm.text = v
-                elm.elementPositionX = self.cur_x + Y_MARGIN
-                elm.elementPositionY = self.cur_y - Y_MARGIN
-                self.cur_x += table.field_widths[x]
+            elm = field_name.clone("header_clone")
+            v = f.aliasName
+            if x in table.adjust_header_columns:
+                v = table.adjust_header_columns[x]
+            elm.text = v
+            elm.elementPositionX = self.cur_x + Y_MARGIN
+            elm.elementPositionY = self.cur_y - Y_MARGIN
+            self.cur_x += table.field_widths[x]
             x += 1
         first_row = True
         new_row = True
         x = 0
         xx = 0
+        if not table.not_continued:
+            self.cur_y -= float(table.row_heights[xx])
         for row in table.rows:
             for v in row:
                 if v in ['', ' ', 'None', None]:
@@ -887,7 +938,8 @@ class Report:
                 elif x in percent_fields:
                     elm.text = str(v) + '%'
                 else:
-                    elm.text = v if not is_float(v) else NUM_DIGITS.format(float(v)) 
+                    tt = v if not is_float(v) else NUM_DIGITS_2.format(float(v)) 
+                    elm.text = table.test_trim(tt)
                 new_x = self.cur_x + Y_MARGIN
                 if not table.total_row_index == None:
                     if xx == len(table.rows) -1:
@@ -900,7 +952,7 @@ class Report:
                 x += 1
             new_row = True
             if table.is_overflow:
-                self.cur_y -= float(table.row_heights[xx])
+                self.cur_y -= float(table.row_heights[xx + 1])
             xx += 1
 
     def delete_elements(self):
@@ -1048,7 +1100,6 @@ def main():
     
     out_folder = os.path.dirname(os.path.abspath(out_report)) #folder that will contain the final output report
     out_name = os.path.basename(os.path.abspath(out_report))  #required parameter for the output report name 
-
     report = None
     try:
         tables = [t.strip("'") for t in tables.split(';')]
