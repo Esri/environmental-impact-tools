@@ -460,7 +460,7 @@ class Table:
         #Calculate the column/row widths and the row/table heights
         if len(self.field_widths) == 0 or self.first_overflow:
             if self.first_overflow:
-                self.rows = [[str(v).replace('\n','') for v in r] for r in self.rows]
+                self.rows = [[str(v).replace('\n',' ') for v in r] for r in self.rows]
             self.calc_widths()
         overflow = self.calc_heights()
         #self.row_heights = [math.ceil(x*100)/100 for x in self.row_heights]
@@ -917,7 +917,7 @@ class Report:
         new_row = True
         x = 0
         xx = 0
-        if not table.not_continued:
+        if not table.not_continued and not table.full_overflow:
             self.cur_y -= float(table.row_heights[xx])
         for row in table.rows:
             for v in row:
@@ -1116,7 +1116,7 @@ def main():
             else:
                 fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
             cur = arcpy.da.SearchCursor(table, [f.name for f in fields])
-            test_rows = [[str(v).replace('\n','') for v in r] for r in cur]
+            test_rows = [[str(v).replace('\n',' ') for v in r] for r in cur]
             report.add_table(table_title, test_rows, fields)
 
         pdf = report.generate_report(out_folder, out_name)
