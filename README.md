@@ -1,7 +1,7 @@
 # environmental-impact-tools
 Environmental Impact Tools provide analysis and reporting tools for scientists, planners, and other analysts to understand potential impact of development and other projects on the natural environment. Environmental Impact Tools leverage the core ArcGIS Platform to help organizations with analysis and reporting workflows.
 
-![Image of Environmental Analysis](environmental-analysis.png "Environmental Analysis")
+![Image of Environmental Analysis](EnvImpactAnalysis_Overview.png "Environmental Analysis")
 
 ## Features
 This GitHub repository houses the Environmental Analysis toolset used to analyze data and report the results.  The toolset includes the following tools:
