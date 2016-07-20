@@ -1,2 +1,2 @@
 ArcGIS Solutions
-Pulled from GitHub development
+June 2016.1 Release
