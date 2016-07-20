@@ -283,6 +283,11 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 
         arcpy.Clip_analysis(analysis_layer, clip_layer, out_layer, xy_tolerance)
 
+        # at Pro 1.3, if nothing intersects with the clip layer, no result is generated - account for this
+        if not arcpy.Exists(out_layer_name):
+            arcpy.AddMessage(("No {0} features found in {1} (No clip result found).".format(analysis_layer, clip_layer)))
+            return "empty"
+
         match_count = int(arcpy.GetCount_management(out_layer_name)[0])
 
         if match_count == 0:
