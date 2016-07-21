@@ -494,7 +494,7 @@ class Report:
         self.map_template = map_template
         self.overflow_template = overflow_template
         self.page_num = 0
-    
+
         self.aprx = arcpy.mp.ArcGISProject('CURRENT')
         self.temp_dir = self.aprx.homeFolder
 
@@ -1083,7 +1083,7 @@ def trace():
     line = tbinfo.split(", ")[1]
     synerror = traceback.format_exc().splitlines()[-1]
     return line, __file__, synerror
-    
+
 def main():
     arcpy.env.overwriteOutput = True
 
@@ -1106,6 +1106,8 @@ def main():
 
         report = Report(report_title, sub_title, logo, map, scale_unit, report_type, map_report_template, overflow_report_template)
    
+        validated_workspaces = []
+        domain_mapping = {}
         for table in tables:
             table_title = os.path.splitext(os.path.basename(table))[0]       
             desc = arcpy.Describe(table)
@@ -1115,8 +1117,32 @@ def main():
                                fi.getVisible(fi.findFieldByName(f.name) == 'VISIBLE')]
             else:
                 fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
+            workspace = desc.path
+            if workspace not in validated_workspaces:
+                validated_workspaces.append(workspace)
+                domain_list = arcpy.da.ListDomains(workspace)
+                if(len(domain_list) > 0):
+                    for domain in domain_list:
+                        if domain.domainType == 'CodedValue':
+                            domain_mapping[workspace] = {domain.name : domain.codedValues}
+            d = None
+            if workspace in domain_mapping.keys():
+                d = domain_mapping[workspace]
+
             cur = arcpy.da.SearchCursor(table, [f.name for f in fields])
-            test_rows = [[str(v).replace('\n',' ') for v in r] for r in cur]
+            test_rows = []
+            for r in cur:
+                x = 0
+                tr = []
+                for v in r:
+                    f = fields[x]
+                    _v = v
+                    if d and f.domain != '':
+                        if v in d[f.domain].keys():
+                            _v = d[f.domain][v]
+                    tr.append(str(_v).replace('\n',' '))
+                    x += 1
+                test_rows.append(tr)
             report.add_table(table_title, test_rows, fields)
 
         pdf = report.generate_report(out_folder, out_name)
