@@ -17,7 +17,7 @@
  """
 
 import arcpy
-import os, sys, json, datetime, textwrap, math, re
+import os, sys, json, datetime, textwrap, math, re, locale
 
 ANALYSIS_PROP_FIELD = 'ANALYSISPROP'
 ANALYSIS_DESC_FIELD = 'ANALYSISDESC'
@@ -46,6 +46,7 @@ Y_MARGIN = .025
 X_MARGIN = .06
 
 NUM_DIGITS_2 = '{0:.2f}'
+locale.setlocale(locale.LC_ALL, '')
 
 class MockField:
     def __init__(self, name, alias, type):
@@ -120,7 +121,7 @@ class Table:
             if self.first_field_value and x == 0 and ANALYSIS_PROP_FIELD in self.field_names:
                 elm = self.first_field_value
             tt = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
-            elm.text = self.test_trim(tt)
+            elm.text = test_trim(tt)
             potential_length = elm.elementWidth + (X_MARGIN * 3)
             if potential_length > length:
                 self.field_widths[x] = potential_length
@@ -130,12 +131,6 @@ class Table:
 
         if self.row_width > self.content_display.elementWidth:
             self.auto_adjust = self.adjust_row_widths()  
-            
-    def test_trim(self, v):
-        if len(v) > 0:
-            if v[-1] in [0, '0']:
-                v = v[:-1]
-        return v
 
     def get_max_vals(self, rows):
         vals = []
@@ -272,7 +267,7 @@ class Table:
                     v = str(row[column_index])
                     if len(v) > max_chars:
                         v = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
-                        v = self.test_trim(v)
+                        v = test_trim(v)
                         wrapped_val = textwrap.wrap(v, max_chars)
                         wrapped_height = (len(wrapped_val) * (self.row_height - Y_MARGIN))
                         if wrapped_height > row_heights[x]:
@@ -418,7 +413,7 @@ class Table:
                         else:
                             sums[i] += new_v
                         if is_float(new_v):
-                            r[i] = self.test_trim(str(NUM_DIGITS_2.format(new_v)))
+                            r[i] = test_trim(str(NUM_DIGITS_2.format(new_v)))
                     else:
                         r[i] = ''
                 first_row = False
@@ -430,7 +425,7 @@ class Table:
                 v = sums[sum]
                 a = ''
                 if not percent_idx == None and i == percent_idx:
-                    v = self.test_trim(str(NUM_DIGITS_2.format(float(v))))
+                    v = test_trim(str(NUM_DIGITS_2.format(float(v))))
                     v += '%'
                     if self.is_buffer_rows:
                         a += BUFFER_TITLE_TOTAL
@@ -438,7 +433,7 @@ class Table:
                         a += AOI_TITLE_TOTAL
                 else:
                     v = str(NUM_DIGITS_2.format(float(v))) if is_float(v) else str(v)
-                    v = self.test_trim(v)
+                    v = test_trim(locale.format('%.2f', float(v), True))
                     total_row.append(self.fields[sum_indexes[i]].aliasName + ": ")
                 total_row.append(str(v) + a + ',')
                 i += 1
@@ -929,6 +924,7 @@ class Report:
                     if not table.is_overflow:
                         self.cur_y -= float(table.row_heights[xx])
                     new_row = False
+                field_name = table.fields[x].name
                 if first_field_value and x == 0:
                     elm = first_field_value.clone("cell_clone")
                 else:
@@ -938,8 +934,10 @@ class Report:
                 elif x in percent_fields:
                     elm.text = str(v) + '%'
                 else:
-                    tt = v if not is_float(v) else NUM_DIGITS_2.format(float(v)) 
-                    elm.text = table.test_trim(tt)
+                    tt = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
+                    if field_name in SUM_FIELDS and field_name != PERCENT_FIELD:
+                        tt = locale.format('%.2f', float(tt), True)
+                    elm.text = test_trim(tt)
                 new_x = self.cur_x + Y_MARGIN
                 if not table.total_row_index == None:
                     if xx == len(table.rows) -1:
@@ -1067,13 +1065,32 @@ class Report:
         return v in ['', ' ', 'None', None]
 
 def is_float(value):
-  try:
-    if str(value).count('.') == 0:
+    try:
+        float(value)
+        return True
+    except ValueError:
         return False
-    float(value)
-    return True
-  except ValueError:
-    return False
+
+def is_potential_float(value):
+    try:
+        if str(value).count('.') == -1:
+            return False
+        float(str(value).replace(',', ''))
+        return True
+    except ValueError:
+        return False
+
+def test_trim(v):
+    if v not in [None, '', ' ']:
+        if is_potential_float(v):
+            v = str(v)
+            if v[-1] in [0, '0']:
+                v = v[:-1]
+                if str(v[-1]) in ['.']:
+                    v = v[:-1]
+                else:
+                    v = test_trim(v)
+    return v
 
 def trace():
     import traceback
@@ -1140,7 +1157,7 @@ def main():
                     if d and f.domain != '':
                         if v in d[f.domain].keys():
                             _v = d[f.domain][v]
-                    tr.append(str(_v).replace('\n',' '))
+                    tr.append(str(test_trim(_v)).replace('\n',' '))
                     x += 1
                 test_rows.append(tr)
             report.add_table(table_title, test_rows, fields)
