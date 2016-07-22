@@ -121,7 +121,7 @@ class Table:
             if self.first_field_value and x == 0 and ANALYSIS_PROP_FIELD in self.field_names:
                 elm = self.first_field_value
             tt = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
-            elm.text = test_trim(tt)
+            elm.text = tt
             potential_length = elm.elementWidth + (X_MARGIN * 3)
             if potential_length > length:
                 self.field_widths[x] = potential_length
@@ -140,6 +140,12 @@ class Table:
         for r in rows:
             x = 0
             for v in r:
+                field_name = self.field_names[x]
+                if field_name in SUM_FIELDS:
+                    if field_name != PERCENT_FIELD:
+                        v = locale.format('%.2f', float(v), True)
+                    else:
+                        v = str(v) + '%'
                 if fr:
                     all_lower[x] = [v.islower()]
                     vals.append(v)
@@ -222,6 +228,12 @@ class Table:
                     self.field_widths[idx] += new_adjust
 
         self.row_width = sum(self.field_widths)
+
+        if self.row_width > self.content_display.elementWidth:
+            arcpy.AddError('Unable to process the data.')
+            arcpy.AddError('The width required to display the data exceeds the potential display area.')
+            arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
+            sys.exit()
         return auto_adjust
 
     def calc_num_chars(self, fit_width, v, column_index):
@@ -233,6 +245,11 @@ class Table:
         while elm.elementWidth < fit_width and len(v) > x:
             elm.text += str(v)[x]
             x += 1
+        if x == 0:
+            arcpy.AddError('Unable to process the data.')
+            arcpy.AddError('The width required to display the data exceeds the potential display area.')
+            arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
+            sys.exit()
         return x
 
     def calc_heights(self):
@@ -265,6 +282,10 @@ class Table:
                 x = 0
                 for row in self.rows:
                     v = str(row[column_index])
+                    field_name = self.field_names[column_index]
+                    if field_name in SUM_FIELDS and field_name != PERCENT_FIELD:
+                        if is_float(v):
+                            v = locale.format('%.2f', float(v), True)
                     if len(v) > max_chars:
                         v = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
                         v = test_trim(v)
@@ -432,8 +453,8 @@ class Table:
                     else:
                         a += AOI_TITLE_TOTAL
                 else:
-                    v = str(NUM_DIGITS_2.format(float(v))) if is_float(v) else str(v)
-                    v = test_trim(locale.format('%.2f', float(v), True))
+                    v = str(locale.format('%.2f', float(v), True)) if is_float(v) else str(v)
+                    v = test_trim(v)
                     total_row.append(self.fields[sum_indexes[i]].aliasName + ": ")
                 total_row.append(str(v) + a + ',')
                 i += 1
@@ -455,7 +476,7 @@ class Table:
         #Calculate the column/row widths and the row/table heights
         if len(self.field_widths) == 0 or self.first_overflow:
             if self.first_overflow:
-                self.rows = [[str(v).replace('\n',' ') for v in r] for r in self.rows]
+                self.rows = [[str(v).replace('\n','') for v in r] for r in self.rows]
             self.calc_widths()
         overflow = self.calc_heights()
         #self.row_heights = [math.ceil(x*100)/100 for x in self.row_heights]
@@ -936,7 +957,8 @@ class Report:
                 else:
                     tt = v if not is_float(v) else NUM_DIGITS_2.format(float(v))
                     if field_name in SUM_FIELDS and field_name != PERCENT_FIELD:
-                        tt = locale.format('%.2f', float(tt), True)
+                        if(is_float(tt)):
+                            tt = locale.format('%.2f', float(tt), True)
                     elm.text = test_trim(tt)
                 new_x = self.cur_x + Y_MARGIN
                 if not table.total_row_index == None:
