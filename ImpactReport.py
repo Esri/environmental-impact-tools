@@ -327,8 +327,15 @@ class Table:
                         v = test_trim(v)
                         wrapped_val = textwrap.wrap(v, max_chars)
                         wrapped_height = (len(wrapped_val) * (self.row_height - Y_MARGIN))
-                        if wrapped_height > row_heights[x]:
-                            row_heights[x] = wrapped_height
+                        if wrapped_height < self.content_display.elementHeight:
+                            if wrapped_height > row_heights[x]:
+                                row_heights[x] = wrapped_height
+                        else:
+                            arcpy.AddError('Unable to process the data.')
+                            arcpy.AddError('The width and or height required to display the data exceeds the potential display area.')
+                            #TODO should add message about some values being too long
+                            arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
+                            sys.exit()
                         row[column_index] = '\n'.join(wrapped_val)
                     x += 1
         else:
