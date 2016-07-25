@@ -1136,7 +1136,7 @@ def is_float(value):
 
 def is_potential_float(value):
     try:
-        if str(value).count('.') == -1:
+        if str(value).count('.') == 0:
             return False
         float(str(value).replace(',', ''))
         return True
