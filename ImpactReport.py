@@ -262,10 +262,9 @@ class Table:
         #If we are still unable to handle the values based on the potential display 
         # area we will exit and suggest that the user re-consider the inputs.
         if self.row_width > self.content_display.elementWidth:
-            arcpy.AddError('Unable to process the data.')
             arcpy.AddError('The width required to display the data exceeds the potential display area.')
             arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
-            sys.exit()
+            sys.exit('Unable to process the data.')
         return auto_adjust
 
     def calc_num_chars(self, fit_width, v, column_index):
@@ -281,10 +280,9 @@ class Table:
             x += 1
         if x == 0:
             #If 0 characters will fit we will exit and suggest that the user re-consider the inputs.
-            arcpy.AddError('Unable to process the data.')
             arcpy.AddError('The width required to display the data exceeds the potential display area.')
             arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
-            sys.exit()
+            sys.exit('Unable to process the data.')
         return x
 
     def calc_heights(self):
@@ -331,11 +329,11 @@ class Table:
                             if wrapped_height > row_heights[x]:
                                 row_heights[x] = wrapped_height
                         else:
-                            arcpy.AddError('Unable to process the data.')
+                            #arcpy.AddError('Unable to process the data.')
                             arcpy.AddError('The width and or height required to display the data exceeds the potential display area.')
                             #TODO should add message about some values being too long
                             arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
-                            sys.exit()
+                            sys.exit('Unable to process the data.')
                         row[column_index] = '\n'.join(wrapped_val)
                     x += 1
         else:
@@ -672,7 +670,7 @@ class Report:
                 arcpy.AddError("Missing required elements in: " + template)
                 for elm in missing_elements:
                     arcpy.AddError("Cannot locate element: " + elm)
-                sys.exit()
+                sys.exit('Cannot locate element')
             s = json.dumps(data)
             pagx = self.temp_dir + os.sep + name + '.pagx'
             with open(pagx, 'w') as write_file:
@@ -693,7 +691,7 @@ class Report:
             return out_elements
         else:
             arcpy.AddError("Cannot locate Layout: " + layout_name)
-            sys.exit()
+            sys.exit('Cannot to locate element')
 
     def update_layouts(self):
         self.set_layout('map', self.map_pagx)
@@ -857,7 +855,7 @@ class Report:
             self.set_element_props()
         else:
             arcpy.AddError("Cannot find layout:" + layout_name)
-            sys.exit()
+            sys.exit('Cannot locate layout')
             self.remaining_height = None
 
     def set_element_props(self):
@@ -1099,7 +1097,7 @@ class Report:
             if len(self.pdf_paths) > 0:
                 for pdf in self.pdf_paths:
                     os.remove(pdf)
-                sys.exit()
+                sys.exit('Unable to export report')
         for pdf in self.pdf_paths:
             pdf_doc.appendPages(pdf)
             os.remove(pdf)
