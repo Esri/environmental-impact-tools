@@ -262,8 +262,9 @@ class Table:
         #If we are still unable to handle the values based on the potential display 
         # area we will exit and suggest that the user re-consider the inputs.
         if self.row_width > self.content_display.elementWidth:
-            msg = 'The width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
-            sys.exit('Unable to process the table: {0}\n{1}'.format(self.title, msg))
+            global msg
+            msg = 'Unable to process the table: ' + self.title + '\nThe width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
+            sys.exit(1)
         return auto_adjust
 
     def calc_num_chars(self, fit_width, v, column_index):
@@ -278,9 +279,9 @@ class Table:
             elm.text += str(v)[x]
             x += 1
         if x == 0:
-            #If 0 characters will fit we will exit and suggest that the user re-consider the inputs.
-            msg = 'The width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
-            sys.exit('Unable to process the table: {0}\n{1}'.format(self.title, msg))
+            global msg
+            msg = 'Unable to process the table: ' + self.title + '\nThe width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
+            sys.exit(1)
         return x
 
     def calc_heights(self):
@@ -335,8 +336,9 @@ class Table:
                             #    num_possible_rows = len(sum_row_heights)
                             #    break
                         else:
-                            msg = 'The width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
-                            sys.exit('Unable to process the table: {0}\n{1}'.format(self.title, msg))
+                            global msg
+                            msg = 'Unable to process the table: ' + self.title + '\nThe width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
+                            sys.exit(1)
                         row[column_index] = '\n'.join(wrapped_val)
                     x += 1
                 #else:
@@ -675,7 +677,7 @@ class Report:
                 arcpy.AddError("Missing required elements in: " + template)
                 for elm in missing_elements:
                     arcpy.AddError("Cannot locate element: " + elm)
-                sys.exit('Cannot locate element')
+                sys.exit(1)
             s = json.dumps(data)
             pagx = self.temp_dir + os.sep + name + '.pagx'
             with open(pagx, 'w') as write_file:
@@ -695,8 +697,9 @@ class Report:
                     out_elements[elm.name] = elm
             return out_elements
         else:
-            arcpy.AddError("Cannot locate Layout: " + layout_name)
-            sys.exit('Cannot to locate element')
+            global msg
+            msg = "Cannot locate Layout: " + layout_name
+            sys.exit(1)
 
     def update_layouts(self):
         self.set_layout('map', self.map_pagx)
@@ -859,8 +862,9 @@ class Report:
             self.add_pdf()
             self.set_element_props()
         else:
-            arcpy.AddError("Cannot find layout:" + layout_name)
-            sys.exit('Cannot locate layout')
+            global msg
+            msg = "Cannot find layout:" + layout_name
+            sys.exit(1)
             self.remaining_height = None
 
     def set_element_props(self):
@@ -1102,7 +1106,9 @@ class Report:
             if len(self.pdf_paths) > 0:
                 for pdf in self.pdf_paths:
                     os.remove(pdf)
-                sys.exit('Unable to export report')
+                global msg
+                msg = 'Unable to export report'
+                sys.exit(1)
         for pdf in self.pdf_paths:
             pdf_doc.appendPages(pdf)
             os.remove(pdf)
@@ -1240,13 +1246,15 @@ def main():
         line, filename, synerror = trace()
         arcpy.AddError("error on line: %s" % line)
         arcpy.AddError("error in file: %s" % filename)
-        arcpy.AddError("Error: %s" % synerror)
         arcpy.AddError("ArcPy Error: %s" % arcpy.GetMessages(2))
+        if msg:
+            arcpy.AddError("Error: %s" % msg)
     except:
         line, filename, synerror = trace()
         arcpy.AddError("error on line: %s" % line)
         arcpy.AddError("error in file: %s" % filename)
-        arcpy.AddError("Error: %s" % synerror)
+        if msg:
+            arcpy.AddError("Error: %s" % msg)
     finally:
         if report != None:
             for pdf in report.pdf_paths:
