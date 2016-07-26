@@ -262,10 +262,8 @@ class Table:
         #If we are still unable to handle the values based on the potential display 
         # area we will exit and suggest that the user re-consider the inputs.
         if self.row_width > self.content_display.elementWidth:
-            arcpy.AddError('Unable to process the data.')
-            arcpy.AddError('The width required to display the data exceeds the potential display area.')
-            arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
-            sys.exit('Unable to process the data.')
+            msg = 'The width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
+            sys.exit('Unable to process the table: {0}\n{1}'.format(self.title, msg))
         return auto_adjust
 
     def calc_num_chars(self, fit_width, v, column_index):
@@ -281,10 +279,8 @@ class Table:
             x += 1
         if x == 0:
             #If 0 characters will fit we will exit and suggest that the user re-consider the inputs.
-            arcpy.AddError('Unable to process the data.')
-            arcpy.AddError('The width required to display the data exceeds the potential display area.')
-            arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
-            sys.exit('Unable to process the data.')
+            msg = 'The width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
+            sys.exit('Unable to process the table: {0}\n{1}'.format(self.title, msg))
         return x
 
     def calc_heights(self):
@@ -305,6 +301,8 @@ class Table:
         adjust_header_columns_list = [] 
 
         row_heights = []
+        #sum_row_heights = 0
+        #num_possible_rows = 0
         if len(self.auto_adjust) > 0:
             row_heights = [self.row_height] * len(self.rows)
             for column_index in self.auto_adjust:
@@ -330,13 +328,19 @@ class Table:
                         if wrapped_height < self.content_display.elementHeight:
                             if wrapped_height > row_heights[x]:
                                 row_heights[x] = wrapped_height
+                            #sum_row_heights = sum(row_heights)
+                            #if num_possible_rows > 0 and x == num_possible_rows:
+                            #    break
+                            #if sum_row_heights >= self.content_display.elementHeight:
+                            #    num_possible_rows = len(sum_row_heights)
+                            #    break
                         else:
-                            arcpy.AddError('Unable to process the data.')
-                            arcpy.AddError('The width and or height required to display the data exceeds the potential display area.')
-                            arcpy.AddError('Please reduce the number of fields or provide a larger content display area in the layout template.')
-                            sys.exit('Unable to process the data.')
+                            msg = 'The width required to display the data exceeds the potential display area.\nPlease reduce the number of fields or provide a larger content display area in the layout template.'
+                            sys.exit('Unable to process the table: {0}\n{1}'.format(self.title, msg))
                         row[column_index] = '\n'.join(wrapped_val)
                     x += 1
+                #else:
+                #    continue
         else:
             table_height = self.row_count * self.row_height
             row_heights = [self.row_height] * len(self.rows)
@@ -1234,15 +1238,15 @@ def main():
         os.startfile(pdf)
     except arcpy.ExecuteError:
         line, filename, synerror = trace()
-        print("error on line: %s" % line)
-        print("error in file name: %s" % filename)
-        print("with error message: %s" % synerror)
-        arcpy.AddError("ArcPy Error Message: %s" % arcpy.GetMessages(2))
+        arcpy.AddError("error on line: %s" % line)
+        arcpy.AddError("error in file: %s" % filename)
+        arcpy.AddError("Error: %s" % synerror)
+        arcpy.AddError("ArcPy Error: %s" % arcpy.GetMessages(2))
     except:
         line, filename, synerror = trace()
-        print("error on line: %s" % line)
-        print("error in file name: %s" % filename)
-        print("with error message: %s" % synerror)
+        arcpy.AddError("error on line: %s" % line)
+        arcpy.AddError("error in file: %s" % filename)
+        arcpy.AddError("Error: %s" % synerror)
     finally:
         if report != None:
             for pdf in report.pdf_paths:
