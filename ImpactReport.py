@@ -155,7 +155,12 @@ class Table:
         #We still have a practical limitation on the number of fields but attempt
         # to make them all fit if we can.
         if self.row_width > self.content_display.elementWidth:
-            self.auto_adjust = self.adjust_row_widths()  
+            auto_adjust = self.adjust_row_widths() 
+            if auto_adjust != "Error":
+                self.auto_adjust = auto_adjust
+                return True
+            else:
+                return False
 
     def get_max_vals(self, rows):
         #rather than testing all values from the rows by assigning to the appropriate 
@@ -264,12 +269,7 @@ class Table:
         #If we are still unable to handle the values based on the potential display 
         # area we will exit and suggest that the user re-consider the inputs.
         if self.row_width > self.content_display.elementWidth:
-            global msg
-            msg = []
-            msg.append('Unable to process the table: ' + self.title)
-            msg.append('The width required to display the data exceeds the potential display area.')
-            msg.append('Please reduce the number of fields or provide a larger content display area in the layout template.')
-            sys.exit()
+            return "Error"
         return auto_adjust
 
     def calc_num_chars(self, fit_width, v, column_index):
@@ -344,12 +344,7 @@ class Table:
                             #    num_possible_rows = len(sum_row_heights)
                             #    break
                         else:
-                            global msg
-                            msg = []
-                            msg.append('Unable to process the table: ' + self.title)
-                            msg.append('The width required to display the data exceeds the potential display area.')
-                            msg.append('Please reduce the number of fields or provide a larger content display area in the layout template.')
-                            sys.exit()
+                            return True
                         row[column_index] = '\n'.join(wrapped_val)
                     x += 1
                 #else:
@@ -536,7 +531,9 @@ class Table:
         if len(self.field_widths) == 0 or self.first_overflow:
             if self.first_overflow:
                 self.rows = [[str(v).replace('\n',' ') for v in r] for r in self.rows]
-            self.calc_widths()
+            valid_widths = self.calc_widths()
+            if not valid_widths:
+                return True
         overflow = self.calc_heights()
         #self.row_heights = [math.ceil(x*100)/100 for x in self.row_heights]
         return overflow
@@ -733,7 +730,19 @@ class Report:
                     table.is_overflow = False
             overflow = table.init_table(self.cur_elements, self.remaining_height, self.layout_type, self.key_elements)
             x += 1
-            if overflow:             
+            bypass_table = False
+            if overflow:   
+                if table.overflow_rows == None and self.layout_type == 'map':
+                    table.overflow_rows = table.rows
+                    bypass_table = True
+                    table.full_overflow = True
+                elif table.overflow_rows == None and self.layout_type != 'map':
+                    global msg
+                    msg = []
+                    msg.append('Unable to process the table: ' + table.title)
+                    msg.append('The space required to display the data exceeds the potential display area.')
+                    msg.append('Please reduce the number of fields or provide a larger content display area in the layout template.')
+                    sys.exit()
                 overflow_table = Table(table.title, table.overflow_rows, table.fields)
                 overflow_table = self.update_overflow_table(table, overflow_table, first_overflow)
                 if len(table.rows) == 0:
@@ -753,7 +762,7 @@ class Report:
                     buffer_rows_table.is_buffer_rows = True
                     self.tables.insert(x, buffer_rows_table)
 
-            if table.row_count > 0:
+            if table.row_count > 0 and bypass_table == False:
                 table_header_background = table.table_header_background
                 #if not table.is_overflow:
                 table_header_background = table.table_header_background.clone('table_header_background_clone')
