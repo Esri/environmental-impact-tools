@@ -161,6 +161,8 @@ class Table:
                 return True
             else:
                 return False
+        else:
+            return True
 
     def get_max_vals(self, rows):
         #rather than testing all values from the rows by assigning to the appropriate 
