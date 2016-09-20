@@ -13,7 +13,7 @@ This GitHub repository houses the Environmental Analysis toolset used to analyze
 
 ## Requirements
 Start using these tools now by downloading this repository as a .zip file and unzipping it to a suitable location; or clone the repository with a git tool.  Requirements for using these tools include:
-* ArcGIS Pro 1.2
+* ArcGIS Pro 1.3.1
 
 For more information on requirements and the use of the tools, see the [Environmental Analysis](http://links.esri.com/stategovernment/help/EnvironmentalImpactAnalysis) help.
 
