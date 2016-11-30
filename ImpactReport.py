@@ -17,7 +17,10 @@
  """
 
 import arcpy
-import os, sys, json, datetime, textwrap, math, re, locale
+import os, sys, json, datetime, textwrap, math, re, locale, gzip, io
+from urllib.request import urlopen as urlopen
+from urllib.request import Request as request
+from urllib.parse import urlencode as encode
 
 #Key Fields
 # These feilds will be added by the analysis tools
@@ -70,6 +73,22 @@ class MockField:
         self.aliasName
     def type(self):
         return self.type
+
+class MockDomain:
+    #Handle domain from FeatureService in a similar way as domains from GDB
+    def __init__(self, domain):
+        self.name = domain['name']
+        self.domainType = 'CodedValue'
+        cv = {}
+        for _d in domain['codedValues']:
+            cv[_d['code']] = _d['name']
+        self.codedValues = cv
+    def name(self):
+        return self.name
+    def domainType(self):
+        self.domainType
+    def codedValues(self):
+        return self.codedValues
 
 class Table:
     ##Report Table##
@@ -1200,6 +1219,73 @@ def trace():
     synerror = traceback.format_exc().splitlines()[-1]
     return line, __file__, synerror
 
+def get_domains(url, name):
+    if not url.endswith('/FeatureServer'):
+        return "Invalid URL"
+    else:
+        url += "/query"
+
+    if url.startswith('GIS Servers\\'):
+        url = 'https://{0}'.format(url[len('GIS Servers\\'):])
+
+    try:
+        layer_id = int(name)
+    except:
+        name = name[1:]
+        layer_id = ''
+        for c in name:
+            if c in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
+                layer_id += c
+            else:
+                break
+        layer_id = str(layer_id)
+
+    parameters = {'f': 'json', 'layerDefs' : '{' + '"{0}":"1=1"'.format(layer_id) + '}'}
+    response = _url_request(url, parameters)
+
+    domains = []
+    fields = []
+    if 'layers' in response:
+        layer = response['layers'][0]
+        if layer and 'fields' in layer:
+            fields = layer['fields']
+    if len(fields) > 0:
+        for f in fields:
+            if 'domain' in f:
+                domain = f['domain']
+                if domain not in [None]:
+                    if 'type' in domain:
+                        if domain['type'] == 'codedValue':
+                            domains.append(MockDomain(domain))
+    
+    return domains
+
+def _url_request(url, request_parameters):
+    """Send a new request and format the json response.
+    Keyword arguments:
+    url - the url of the request
+    request_parameters - a dictionay containing the name of the parameter and its correspoinsding value"""
+
+    req = request('?'.join((url, encode(request_parameters))))
+    req.add_header('Accept-encoding', 'gzip')
+
+    response = urlopen(req)
+
+    if response.info().get('Content-Encoding') == 'gzip':
+        buf = io.BytesIO(response.read())
+        with gzip.GzipFile(fileobj=buf) as gzip_file:
+            response_bytes = gzip_file.read()
+    else:
+        response_bytes = response.read()
+
+    response_text = response_bytes.decode('UTF-8')
+    response_json = json.loads(response_text)
+
+    if "error" in response_json:
+        raise Exception("{0}: {1}".format("Error", response_json))
+
+    return response_json
+
 def main():
     arcpy.env.overwriteOutput = True
 
@@ -1234,17 +1320,30 @@ def main():
             else:
                 fields = [f for f in desc.fields if f.type not in ['Geometry', 'OID']]
             workspace = desc.path
-            desc_w = arcpy.Describe(workspace)
-            if desc_w.dataType == 'FeatureDataset':
-                workspace = desc_w.path
+
+            is_feature_server = True
+            if not 'FeatureServer' in workspace:
+                is_feature_server = False
+                desc_w = arcpy.Describe(workspace)
+                if desc_w.dataType == 'FeatureDataset':
+                    workspace = desc_w.path
+
             if workspace not in validated_workspaces:
                 validated_workspaces.append(workspace)
                 domain_mapping[workspace] = []
-                domain_list = arcpy.da.ListDomains(workspace)
+                if is_feature_server:
+                    try:
+                        domain_list = get_domains(workspace, desc.name)
+                    except:
+                        domain_list = []
+                else:
+                    domain_list = arcpy.da.ListDomains(workspace)
                 if(len(domain_list) > 0):
                     for domain in domain_list:
-                        if domain.domainType == 'CodedValue':
-                            domain_mapping[workspace].append({domain.name : domain.codedValues})
+                        if hasattr(domain, 'domainType'):
+                            if domain.domainType == 'CodedValue':
+                                domain_mapping[workspace].append({domain.name : domain.codedValues})
+
             d = None
             if workspace in domain_mapping.keys():
                 d = domain_mapping[workspace]
