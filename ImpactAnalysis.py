@@ -56,6 +56,7 @@ interim_output_merged = "interim_result"
 interim_aoi_lines = "interim_aoi_lines"
 interim_analysis_key = "interim_analysis_layer"
 interim_related_result = "interim_result_related"
+interim_output_intersect = "interim_output_intersect"
 
 # arcpy.env.overwriteOutput = True  # should be set by the user in Geoprocessing Options
 output_workspace = arcpy.env.scratchWorkspace
@@ -281,7 +282,20 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
         xy_tolerance = ""
         out_layer = output_workspace + "\\" + out_layer_name
 
-        arcpy.Clip_analysis(analysis_layer, clip_layer, out_layer, xy_tolerance)
+        # at pro 2.2 and possibly back to 2.1.3 if input features do not intersect the extent of the clip feature
+        # the clip tool will fail rather than throw the expected warning about empty output
+        # try/except were added to avoid the failure
+        # intersect does not throw the same failure so it is checked to verify that no features intersect the clip feature
+        # so we can avoid being concerened about why the clip failed
+        try:
+          arcpy.Clip_analysis(analysis_layer, clip_layer, out_layer, xy_tolerance)
+        except Exception as error:
+          out_intersect_layer = output_workspace + "\\" + interim_output_intersect
+          r = arcpy.Intersect_analysis([analysis_layer, clip_layer], out_intersect_layer, "ONLY_FID", None, "INPUT")
+          warnings = r.getMessages(1)
+          # 000117 is the code for empty output
+          if warnings and '000117' in warnings:
+            pass
 
         # at Pro 1.3, if nothing intersects with the clip layer, no result is generated - account for this
         if not arcpy.Exists(out_layer_name):
@@ -737,7 +751,7 @@ try:
         exit()
 
     # if related fields are chosen, then we need to ensure the primary key is preserved
-    if related_field != "#" and related_field != "":
+    if related_field != "#" and related_field != "" and related_field != None:
         input_analysis_layer = check_related_records(input_analysis_layer, related_table)
 
     if analysis_type == "Feature Comparison":
@@ -824,7 +838,7 @@ try:
 
 except Exception as err:
     exc_m_type, exc_m_obj, exc_m_tb = sys.exc_info()
-    arcpy.AddError("Impact Analysis Error: Line {}: {}".format(exc_m_tb.tb_lineno, error))
+    arcpy.AddError("Impact Analysis Error: Line {}: {}".format(exc_m_tb.tb_lineno, err))
 
 finally:
     # Clean up temporary files
@@ -842,5 +856,5 @@ finally:
         arcpy.Delete_management(interim_analysis_key)
     if arcpy.Exists(interim_related_result):
         arcpy.Delete_management(interim_related_result)
-
-
+    if arcpy.Exists(interim_output_intersect):
+        arcpy.Delete_management(interim_output_intersect)
