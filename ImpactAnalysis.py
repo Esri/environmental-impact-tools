@@ -1,3 +1,35 @@
+# Esri start of added imports
+import sys, os, arcpy
+# Esri end of added imports
+
+# Esri start of added variables
+g_ESRI_variable_1 = 'interim_result_aoi'
+g_ESRI_variable_2 = 'interim_result_buffer'
+g_ESRI_variable_3 = 'interim_result'
+g_ESRI_variable_4 = 'interim_aoi_lines'
+g_ESRI_variable_5 = 'interim_analysis_layer'
+g_ESRI_variable_6 = 'interim_result_related'
+g_ESRI_variable_7 = 'interim_output_intersect'
+g_ESRI_variable_8 = 'basic_proximity'
+g_ESRI_variable_9 = "'{}'"
+g_ESRI_variable_10 = 'ANALYSISTYPE'
+g_ESRI_variable_11 = 'ANALYSISAREA'
+g_ESRI_variable_12 = 'ANALYSISPERCENT'
+g_ESRI_variable_13 = 'ANALYSISLEN'
+g_ESRI_variable_14 = 'ANALYSISCOUNT'
+g_ESRI_variable_15 = 'near_layer'
+g_ESRI_variable_16 = 'GEODESIC'
+g_ESRI_variable_17 = 'ANALYSISLOC'
+g_ESRI_variable_18 = 'NEAR_ANGLE'
+g_ESRI_variable_19 = 'ANALYSISTYPE COUNT'
+g_ESRI_variable_20 = 'NEAR_DIST'
+g_ESRI_variable_21 = 'SUM_ANALYSISPERCENT'
+g_ESRI_variable_22 = 'SUM_ANALYSISAREA'
+g_ESRI_variable_23 = 'SUM_ANALYSISLEN'
+g_ESRI_variable_24 = 'SUM_ANALYSISCOUNT'
+g_ESRI_variable_25 = '#'
+# Esri end of added variables
+
 """
 -------------------------------------------------------------------------------
  | Copyright 2016 Esri
@@ -50,13 +82,13 @@ reporting_units = args[8]
 output_table = args[9]
 
 # Termporary feature classes created during script execution
-interim_output_aoi = "interim_result_aoi"
-interim_output_buffer = "interim_result_buffer"
-interim_output_merged = "interim_result"
-interim_aoi_lines = "interim_aoi_lines"
-interim_analysis_key = "interim_analysis_layer"
-interim_related_result = "interim_result_related"
-interim_output_intersect = "interim_output_intersect"
+interim_output_aoi = g_ESRI_variable_1
+interim_output_buffer = g_ESRI_variable_2
+interim_output_merged = g_ESRI_variable_3
+interim_aoi_lines = g_ESRI_variable_4
+interim_analysis_key = g_ESRI_variable_5
+interim_related_result = g_ESRI_variable_6
+interim_output_intersect = g_ESRI_variable_7
 
 # arcpy.env.overwriteOutput = True  # should be set by the user in Geoprocessing Options
 output_workspace = arcpy.env.scratchWorkspace
@@ -123,7 +155,7 @@ def validate_inputs():
         result = False
         reason += '\n {} does not exist'.format(input_aoi)
 
-    if input_buffer_layer != "#":
+    if input_buffer_layer != g_ESRI_variable_25:
         if not arcpy.Exists(input_buffer_layer):
             result = False
             reason += '\n {} does not exist'.format(input_buffer_layer)
@@ -245,14 +277,14 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
     try:
         out_layer = output_workspace + "\\" + out_layer_name
 
-        arcpy.MakeFeatureLayer_management(analysis_layer, "basic_proximity")
-        arcpy.SelectLayerByLocation_management("basic_proximity", 'intersect', select_by_layer)
+        arcpy.MakeFeatureLayer_management(analysis_layer, g_ESRI_variable_8)
+        arcpy.SelectLayerByLocation_management(g_ESRI_variable_8, 'intersect', select_by_layer)
 
-        match_count = int(arcpy.GetCount_management("basic_proximity")[0])
+        match_count = int(arcpy.GetCount_management(g_ESRI_variable_8)[0])
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(analysis_layer)))
-            return "#"
+            return g_ESRI_variable_25
 
         else:
             # Removed Get Key Values call - if primary key is persisted through the result, this shouldn't be needed
@@ -262,11 +294,11 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
 
             arcpy.AddMessage(("{0} features found in {1}".format(match_count, analysis_layer)))
 
-            arcpy.CopyFeatures_management("basic_proximity", out_layer)
+            arcpy.CopyFeatures_management(g_ESRI_variable_8, out_layer)
             arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
-            exp = "'{}'".format(layer_type)
+            exp = g_ESRI_variable_9.format(layer_type)
 
-            arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
+            arcpy.CalculateField_management(out_layer, g_ESRI_variable_10, exp, "PYTHON_9.3", None)
 
         return out_layer
 
@@ -300,13 +332,13 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
         # at Pro 1.3, if nothing intersects with the clip layer, no result is generated - account for this
         if not arcpy.Exists(out_layer_name):
             arcpy.AddMessage(("No {0} features found in {1} (No clip result found).".format(analysis_layer, clip_layer)))
-            return "#"
+            return g_ESRI_variable_25
 
         match_count = int(arcpy.GetCount_management(out_layer_name)[0])
 
         if match_count == 0:
             arcpy.AddMessage(("No {0} features found in {1}.".format(analysis_layer, clip_layer)))
-            return "#"
+            return g_ESRI_variable_25
 
         else:
             arcpy.AddMessage(("Processing {0} features in {1} within {2}.".format(match_count, analysis_layer, layer_type)))
@@ -319,22 +351,22 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
                 arcpy.AddField_management(out_layer, "ANALYSISAREA", "DOUBLE", "", "", "",
                                           "Total Area ({})".format(reporting_units))
                 exp = '!shape.geodesicArea@{}!'.format(reporting_units)
-                arcpy.CalculateField_management(out_layer, "ANALYSISAREA", exp, "PYTHON_9.3", None)
+                arcpy.CalculateField_management(out_layer, g_ESRI_variable_11, exp, "PYTHON_9.3", None)
 
                 arcpy.AddField_management(out_layer, "ANALYSISPERCENT", "DOUBLE", "", "", "", "Percent of Area")
                 exp = '(!ANALYSISAREA! / ' + str(clip_area) + ')*100'
-                arcpy.CalculateField_management(out_layer, "ANALYSISPERCENT", exp, "PYTHON_9.3", None)
+                arcpy.CalculateField_management(out_layer, g_ESRI_variable_12, exp, "PYTHON_9.3", None)
 
             elif analysis_shape_type == "Polyline":
                 arcpy.AddField_management(out_layer, "ANALYSISLEN", "DOUBLE", "", "", "",
                                           "Total Length ({})".format(reporting_units))
                 exp = '!shape.geodesicLength@{}!'.format(reporting_units)
-                arcpy.CalculateField_management(out_layer, "ANALYSISLEN", exp, "PYTHON_9.3", None)
+                arcpy.CalculateField_management(out_layer, g_ESRI_variable_13, exp, "PYTHON_9.3", None)
 
             elif analysis_shape_type == "Point":
                 arcpy.AddField_management(out_layer, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
                 exp = '1'
-                arcpy.CalculateField_management(out_layer, "ANALYSISCOUNT", exp, "PYTHON_9.3", None)
+                arcpy.CalculateField_management(out_layer, g_ESRI_variable_14, exp, "PYTHON_9.3", None)
 
             else:
                 arcpy.AddMessage("Shape type not supported: {}".format(analysis_shape_type))
@@ -343,8 +375,8 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
                 # If the AOI is a point or line, then the only results will be with the buffer,
                 # don't need to differentiate between AOI or buffer in this case
                 arcpy.AddField_management(out_layer, "ANALYSISTYPE", "TEXT", "", "", 10, "Analysis Result Type")
-                exp = "'{}'".format(layer_type)
-                arcpy.CalculateField_management(out_layer, "ANALYSISTYPE", exp, "PYTHON_9.3", None)
+                exp = g_ESRI_variable_9.format(layer_type)
+                arcpy.CalculateField_management(out_layer, g_ESRI_variable_10, exp, "PYTHON_9.3", None)
 
             return out_layer
     except Exception as error:
@@ -357,18 +389,18 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
 def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
     try:
         # Find everything intersecting the AOI
-        arcpy.MakeFeatureLayer_management(near_layer, "near_layer")
-        arcpy.SelectLayerByLocation_management("near_layer", 'intersect', aoi_layer)
+        arcpy.MakeFeatureLayer_management(near_layer, g_ESRI_variable_15)
+        arcpy.SelectLayerByLocation_management(g_ESRI_variable_15, 'intersect', aoi_layer)
 
-        match_count = int(arcpy.GetCount_management("near_layer")[0])
+        match_count = int(arcpy.GetCount_management(g_ESRI_variable_15)[0])
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(aoi_layer)))
-            return "#"
+            return g_ESRI_variable_25
 
         else:
             arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, aoi_layer)))
-            arcpy.CopyFeatures_management("near_layer", out_layer_name)
+            arcpy.CopyFeatures_management(g_ESRI_variable_15, out_layer_name)
 
             desc = arcpy.Describe(aoi_layer)
             input_shape_type = desc.shapeType
@@ -379,9 +411,9 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
 
             if input_shape_type == "Polygon":
                 arcpy.PolygonToLine_management(aoi_layer, interim_aoi_lines)
-                arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", "GEODESIC")
+                arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", g_ESRI_variable_16)
             else:
-                arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
+                arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", g_ESRI_variable_16)
 
             arcpy.AddField_management(out_layer_name, "ANALYSISLOC", "TEXT", "", "", 100, "Location")
 
@@ -392,7 +424,7 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
                         return 'Intersecting with AOI boundary'
                     else:
                         return 'Within AOI'"""
-            arcpy.CalculateField_management(out_layer_name, "ANALYSISLOC", exp, "PYTHON_9.3", codeblock)
+            arcpy.CalculateField_management(out_layer_name, g_ESRI_variable_17, exp, "PYTHON_9.3", codeblock)
 
             exp = "getValue(!NEAR_DIST!, !NEAR_ANGLE!)"
             codeblock = """def getValue(dist, angle):
@@ -401,7 +433,7 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
                         return 0
                     else:
                         return angle"""
-            arcpy.CalculateField_management(out_layer_name, "NEAR_ANGLE", exp, "PYTHON_9.3", codeblock)
+            arcpy.CalculateField_management(out_layer_name, g_ESRI_variable_18, exp, "PYTHON_9.3", codeblock)
 
             return out_layer_name
 
@@ -440,20 +472,20 @@ def abbreviate_units(units):
 def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name):
     try:
         # Find everything intersecting the buffer
-        arcpy.MakeFeatureLayer_management(near_layer, "near_layer")
-        arcpy.SelectLayerByLocation_management("near_layer", 'intersect', buffer_layer)
+        arcpy.MakeFeatureLayer_management(near_layer, g_ESRI_variable_15)
+        arcpy.SelectLayerByLocation_management(g_ESRI_variable_15, 'intersect', buffer_layer)
 
         # Remove from the selection everything intersecting the AOI (these have already been accounted for)
-        arcpy.SelectLayerByLocation_management("near_layer", 'intersect', aoi_layer, None, "REMOVE_FROM_SELECTION")
-        match_count = int(arcpy.GetCount_management("near_layer")[0])
+        arcpy.SelectLayerByLocation_management(g_ESRI_variable_15, 'intersect', aoi_layer, None, "REMOVE_FROM_SELECTION")
+        match_count = int(arcpy.GetCount_management(g_ESRI_variable_15)[0])
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(buffer_layer)))
-            return "#"
+            return g_ESRI_variable_25
 
         else:
             arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, buffer_layer)))
-            arcpy.CopyFeatures_management("near_layer", out_layer_name)
+            arcpy.CopyFeatures_management(g_ESRI_variable_15, out_layer_name)
 
             desc = arcpy.Describe(aoi_layer)
             input_shape_type = desc.shapeType
@@ -464,9 +496,9 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
 
             if input_shape_type == "Polygon":
                 arcpy.PolygonToLine_management(aoi_layer, interim_aoi_lines)
-                arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", "GEODESIC")
+                arcpy.Near_analysis(out_layer_name, interim_aoi_lines, None, "NO_LOCATION", "ANGLE", g_ESRI_variable_16)
             else:
-                arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", "GEODESIC")
+                arcpy.Near_analysis(out_layer_name, aoi_layer, None, "NO_LOCATION", "ANGLE", g_ESRI_variable_16)
 
             arcpy.AddField_management(out_layer_name, "ANALYSISLOC", "TEXT", "", "", 100, "Location")
 
@@ -477,7 +509,7 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
                 else:
                     return 'Unexpected result'"""
 
-            arcpy.CalculateField_management(out_layer_name, "ANALYSISLOC", exp, "PYTHON_9.3", codeblock)
+            arcpy.CalculateField_management(out_layer_name, g_ESRI_variable_17, exp, "PYTHON_9.3", codeblock)
 
             return out_layer_name
 
@@ -577,7 +609,7 @@ def format_outputs(output_layer, out_fields):
             # Nothing special, just remove duplicates
             if group_output_records:
                 # Using the summary statistics tool because Remove Duplicates requires an Advanced License
-                arcpy.Statistics_analysis(output_layer, out_table, "ANALYSISTYPE COUNT", compare_fields)
+                arcpy.Statistics_analysis(output_layer, out_table, g_ESRI_variable_19, compare_fields)
                 arcpy.DeleteField_management(out_table, ["FREQUENCY"])
                 arcpy.DeleteField_management(out_table, ["COUNT_ANALYSISTYPE"])
             else:
@@ -588,9 +620,9 @@ def format_outputs(output_layer, out_fields):
             arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
 
             # Update field aliases to be readable and have distance units embedded
-            arcpy.AlterField_management(out_table, "NEAR_DIST", None,
+            arcpy.AlterField_management(out_table, g_ESRI_variable_20, None,
                                         "Distance ({})".format(abbreviated_units))
-            arcpy.AlterField_management(out_table, "NEAR_ANGLE", None, "Direction")
+            arcpy.AlterField_management(out_table, g_ESRI_variable_18, None, "Direction")
 
         else:
             # Feature Comparison -- summarize the output layer based on the 'keep fields'
@@ -599,17 +631,17 @@ def format_outputs(output_layer, out_fields):
                 arcpy.Statistics_analysis(output_layer, out_table, stat_fields, compare_fields)
                 arcpy.DeleteField_management(out_table, ["FREQUENCY"])
                 if "ANALYSISPERCENT" in stat_fields:
-                    arcpy.AlterField_management(out_table, "SUM_ANALYSISPERCENT", "ANALYSISPERCENT", "Percent of Area")
-                    arcpy.AlterField_management(out_table, "SUM_ANALYSISAREA", "ANALYSISAREA",
+                    arcpy.AlterField_management(out_table, g_ESRI_variable_21, "ANALYSISPERCENT", "Percent of Area")
+                    arcpy.AlterField_management(out_table, g_ESRI_variable_22, "ANALYSISAREA",
                                                 "Total Area ({})".format(abbreviated_units))
                 elif "ANALYSISLEN" in stat_fields:
-                    arcpy.AlterField_management(out_table, "SUM_ANALYSISLEN", "ANALYSISLEN",
+                    arcpy.AlterField_management(out_table, g_ESRI_variable_23, "ANALYSISLEN",
                                                 "Total Length ({})".format(abbreviated_units))
                 else:
                     arcpy.AddField_management(out_table, "ANALYSISCOUNT", "SHORT", "", "", "", "Count of Features")
                     exp = '!SUM_ANALYSISCOUNT!'
-                    arcpy.CalculateField_management(out_table, "ANALYSISCOUNT", exp, "PYTHON_9.3", None)
-                    arcpy.DeleteField_management(out_table, "SUM_ANALYSISCOUNT")
+                    arcpy.CalculateField_management(out_table, g_ESRI_variable_14, exp, "PYTHON_9.3", None)
+                    arcpy.DeleteField_management(out_table, g_ESRI_variable_24)
             else:
                 arcpy.TableToTable_conversion(output_layer, out_path, out_name, field_mapping=field_mapper)
 
@@ -672,7 +704,7 @@ def format_outputs(output_layer, out_fields):
                     if "ANALYSISTYPE" in result_field_names:
                         current_analysis_type = record[analysis_type_index]
                     if foreign_key_type == "String":
-                        current_key = "'{}'".format(current_key)
+                        current_key = g_ESRI_variable_9.format(current_key)
 
                     whereclause = "{} in ({})".format(foreign_key_formatted, current_key)
 
@@ -728,7 +760,7 @@ def create_empty_output(out_table, message_overwrite):
 
         if message_overwrite != "":
             row.setValue("ANALYSISNONE", message_overwrite)
-        elif input_buffer_layer != "#":
+        elif input_buffer_layer != g_ESRI_variable_25:
             row.setValue("ANALYSISNONE", "No features intersect the area of interest or buffer.")
         else:
             row.setValue("ANALYSISNONE", "No features intersect the area of interest.")
@@ -752,7 +784,7 @@ try:
         exit()
 
     # if related fields are chosen, then we need to ensure the primary key is preserved
-    if related_field != "#" and related_field != "" and related_field != None:
+    if related_field != g_ESRI_variable_25 and related_field != "" and related_field != None:
         input_analysis_layer = check_related_records(input_analysis_layer, related_table)
 
     if analysis_type == "Feature Comparison":
@@ -766,15 +798,15 @@ try:
         if aoi_shape in ["Point", "Polyline"]:
             # check if a buffer shape was provided
 
-            if input_buffer_layer == "#":
+            if input_buffer_layer == g_ESRI_variable_25:
                 arcpy.AddWarning("For point and polyline areas of interest, a buffer layer is required for "
                                  "Feature Comparison analyses.")
-                aoi_out = "#"
-                buffer_out = "#"
+                aoi_out = g_ESRI_variable_25
+                buffer_out = g_ESRI_variable_25
                 output_message = "For point and polyline areas of interest, a buffer layer is required for " \
                                  "Feature Comparison analyses."
             else:
-                aoi_out = "#"
+                aoi_out = g_ESRI_variable_25
                 if analysis_shape == "Polygon":
                     buffer_area = get_area(input_buffer_layer, area_units)
                 else:
@@ -789,7 +821,7 @@ try:
             else:
                 aoi_area = 0
             aoi_out = feature_comparison(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI', aoi_area, aoi_shape)
-            if input_buffer_layer != "#":
+            if input_buffer_layer != g_ESRI_variable_25:
                 if analysis_shape == "Polygon":
                     buffer_area = get_area(input_buffer_layer, area_units)
                 else:
@@ -798,32 +830,32 @@ try:
                                                 'Buffer', buffer_area, aoi_shape)
             else:
                 arcpy.AddMessage("No buffer layer provided.")
-                buffer_out = "#"
+                buffer_out = g_ESRI_variable_25
 
-    elif analysis_type == "Basic Proximity":
+    elif analysis_type == g_ESRI_variable_25:
         aoi_out = basic_proximity(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI')
-        if input_buffer_layer != "#":
+        if input_buffer_layer != g_ESRI_variable_25:
             buffer_out = basic_proximity(input_analysis_layer, input_buffer_layer, interim_output_buffer, 'Buffer')
         else:
             arcpy.AddMessage("No buffer layer provided.")
-            buffer_out = "#"
+            buffer_out = g_ESRI_variable_25
     else:
         aoi_out = distance_analysis_aoi(input_analysis_layer, input_aoi, interim_output_aoi)
-        if input_buffer_layer != "#":
+        if input_buffer_layer != g_ESRI_variable_25:
             buffer_out = distance_analysis_buffer(input_analysis_layer, input_aoi,
                                                   input_buffer_layer, interim_output_buffer)
         else:
             arcpy.AddMessage("No buffer layer provided.")
-            buffer_out = "#"
+            buffer_out = g_ESRI_variable_25
 
     arcpy.AddMessage("Creating output table.")
-    if (aoi_out == "#") & (buffer_out == "#"):
+    if (aoi_out == g_ESRI_variable_25) & (buffer_out == g_ESRI_variable_25):
         arcpy.AddMessage("No results found in the Area of Interest or Buffer (if provided) locations.")
         create_empty_output(output_table, output_message)
-    elif aoi_out == "#":
+    elif aoi_out == g_ESRI_variable_25:
         arcpy.AddMessage("No results found in the Area of Interest locations.")
         format_outputs(buffer_out, output_fields)
-    elif buffer_out == "#":
+    elif buffer_out == g_ESRI_variable_25:
         arcpy.AddMessage("No results found in the Buffer location or no buffer provided.")
         format_outputs(aoi_out, output_fields)
     else:
@@ -855,3 +887,4 @@ finally:
         arcpy.Delete_management(interim_related_result)
     if arcpy.Exists(interim_output_intersect):
         arcpy.Delete_management(interim_output_intersect)
+
