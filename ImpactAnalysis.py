@@ -832,7 +832,7 @@ try:
                 arcpy.AddMessage("No buffer layer provided.")
                 buffer_out = g_ESRI_variable_25
 
-    elif analysis_type == g_ESRI_variable_25:
+    elif analysis_type == "Basic Proximity":
         aoi_out = basic_proximity(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI')
         if input_buffer_layer != g_ESRI_variable_25:
             buffer_out = basic_proximity(input_analysis_layer, input_buffer_layer, interim_output_buffer, 'Buffer')
