@@ -56,6 +56,7 @@ interim_output_merged = "interim_result"
 interim_aoi_lines = "interim_aoi_lines"
 interim_analysis_key = "interim_analysis_layer"
 interim_related_result = "interim_result_related"
+interim_output_intersect = "interim_output_intersect"
 
 # arcpy.env.overwriteOutput = True  # should be set by the user in Geoprocessing Options
 output_workspace = arcpy.env.scratchWorkspace
@@ -251,7 +252,7 @@ def basic_proximity(analysis_layer, select_by_layer, out_layer_name, layer_type)
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(analysis_layer)))
-            return "empty"
+            return "#"
 
         else:
             # Removed Get Key Values call - if primary key is persisted through the result, this shouldn't be needed
@@ -281,18 +282,31 @@ def feature_comparison(analysis_layer, clip_layer, out_layer_name, layer_type, c
         xy_tolerance = ""
         out_layer = output_workspace + "\\" + out_layer_name
 
-        arcpy.Clip_analysis(analysis_layer, clip_layer, out_layer, xy_tolerance)
+        # at pro 2.2 and possibly back to 2.1.3 if input features do not intersect the extent of the clip feature
+        # the clip tool will fail rather than throw the expected warning about empty output
+        # try/except were added to avoid the failure
+        # intersect does not throw the same failure so it is checked to verify that no features intersect the clip feature
+        # so we can avoid being concerened about why the clip failed
+        try:
+          arcpy.Clip_analysis(analysis_layer, clip_layer, out_layer, xy_tolerance)
+        except Exception as error:
+          out_intersect_layer = interim_output_intersect
+          r = arcpy.Intersect_analysis([analysis_layer, clip_layer], out_intersect_layer, "ONLY_FID", None, "INPUT")
+          warnings = r.getMessages(1)
+          # 000117 is the code for empty output
+          if warnings and '000117' in warnings:
+            pass
 
         # at Pro 1.3, if nothing intersects with the clip layer, no result is generated - account for this
         if not arcpy.Exists(out_layer_name):
             arcpy.AddMessage(("No {0} features found in {1} (No clip result found).".format(analysis_layer, clip_layer)))
-            return "empty"
+            return "#"
 
         match_count = int(arcpy.GetCount_management(out_layer_name)[0])
 
         if match_count == 0:
             arcpy.AddMessage(("No {0} features found in {1}.".format(analysis_layer, clip_layer)))
-            return "empty"
+            return "#"
 
         else:
             arcpy.AddMessage(("Processing {0} features in {1} within {2}.".format(match_count, analysis_layer, layer_type)))
@@ -350,7 +364,7 @@ def distance_analysis_aoi(near_layer, aoi_layer, out_layer_name):
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(aoi_layer)))
-            return "empty"
+            return "#"
 
         else:
             arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, aoi_layer)))
@@ -435,7 +449,7 @@ def distance_analysis_buffer(near_layer, aoi_layer, buffer_layer, out_layer_name
 
         if match_count == 0:
             arcpy.AddMessage(("No features found in {0}".format(buffer_layer)))
-            return "empty"
+            return "#"
 
         else:
             arcpy.AddMessage(("{0} features found in {1}. Calculating distances.".format(match_count, buffer_layer)))
@@ -496,7 +510,6 @@ def format_outputs(output_layer, out_fields):
     try:
 
         field_mapper = arcpy.FieldMappings()
-
         fields = arcpy.ListFields(output_layer)
         compare_fields = []
         stat_fields = ""
@@ -710,7 +723,9 @@ def create_empty_output(out_table, message_overwrite):
         arcpy.AddField_management(out_table, "ANALYSISNONE", "TEXT", "", "", 150, 'Analysis Result')
 
         rows = arcpy.InsertCursor(out_table)
+
         row = rows.newRow()
+
         if message_overwrite != "":
             row.setValue("ANALYSISNONE", message_overwrite)
         elif input_buffer_layer != "#":
@@ -737,7 +752,7 @@ try:
         exit()
 
     # if related fields are chosen, then we need to ensure the primary key is preserved
-    if related_field != "#" and related_field != "":
+    if related_field != "#" and related_field != "" and related_field != None:
         input_analysis_layer = check_related_records(input_analysis_layer, related_table)
 
     if analysis_type == "Feature Comparison":
@@ -754,12 +769,12 @@ try:
             if input_buffer_layer == "#":
                 arcpy.AddWarning("For point and polyline areas of interest, a buffer layer is required for "
                                  "Feature Comparison analyses.")
-                aoi_out = "empty"
-                buffer_out = "empty"
+                aoi_out = "#"
+                buffer_out = "#"
                 output_message = "For point and polyline areas of interest, a buffer layer is required for " \
                                  "Feature Comparison analyses."
             else:
-                aoi_out = "empty"
+                aoi_out = "#"
                 if analysis_shape == "Polygon":
                     buffer_area = get_area(input_buffer_layer, area_units)
                 else:
@@ -774,7 +789,6 @@ try:
             else:
                 aoi_area = 0
             aoi_out = feature_comparison(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI', aoi_area, aoi_shape)
-
             if input_buffer_layer != "#":
                 if analysis_shape == "Polygon":
                     buffer_area = get_area(input_buffer_layer, area_units)
@@ -784,7 +798,7 @@ try:
                                                 'Buffer', buffer_area, aoi_shape)
             else:
                 arcpy.AddMessage("No buffer layer provided.")
-                buffer_out = "empty"
+                buffer_out = "#"
 
     elif analysis_type == "Basic Proximity":
         aoi_out = basic_proximity(input_analysis_layer, input_aoi, interim_output_aoi, 'AOI')
@@ -792,7 +806,7 @@ try:
             buffer_out = basic_proximity(input_analysis_layer, input_buffer_layer, interim_output_buffer, 'Buffer')
         else:
             arcpy.AddMessage("No buffer layer provided.")
-            buffer_out = "empty"
+            buffer_out = "#"
     else:
         aoi_out = distance_analysis_aoi(input_analysis_layer, input_aoi, interim_output_aoi)
         if input_buffer_layer != "#":
@@ -800,21 +814,18 @@ try:
                                                   input_buffer_layer, interim_output_buffer)
         else:
             arcpy.AddMessage("No buffer layer provided.")
-            buffer_out = "empty"
+            buffer_out = "#"
 
     arcpy.AddMessage("Creating output table.")
-    if (aoi_out == "empty") & (buffer_out == "empty"):
+    if (aoi_out == "#") & (buffer_out == "#"):
         arcpy.AddMessage("No results found in the Area of Interest or Buffer (if provided) locations.")
         create_empty_output(output_table, output_message)
-
-    elif aoi_out == "empty":
+    elif aoi_out == "#":
         arcpy.AddMessage("No results found in the Area of Interest locations.")
         format_outputs(buffer_out, output_fields)
-
-    elif buffer_out == "empty":
+    elif buffer_out == "#":
         arcpy.AddMessage("No results found in the Buffer location or no buffer provided.")
         format_outputs(aoi_out, output_fields)
-
     else:
         # got results from both AOI and Buffer results, merge them together before formatting...
         merged_output = output_workspace + "\\" + interim_output_merged
@@ -824,7 +835,7 @@ try:
 
 except Exception as err:
     exc_m_type, exc_m_obj, exc_m_tb = sys.exc_info()
-    arcpy.AddError("Impact Analysis Error: Line {}: {}".format(exc_m_tb.tb_lineno, error))
+    arcpy.AddError("Impact Analysis Error: Line {}: {}".format(exc_m_tb.tb_lineno, err))
 
 finally:
     # Clean up temporary files
@@ -842,5 +853,5 @@ finally:
         arcpy.Delete_management(interim_analysis_key)
     if arcpy.Exists(interim_related_result):
         arcpy.Delete_management(interim_related_result)
-
-
+    if arcpy.Exists(interim_output_intersect):
+        arcpy.Delete_management(interim_output_intersect)
